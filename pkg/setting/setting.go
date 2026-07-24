@@ -160,6 +160,10 @@ type Cfg struct {
 	EnforceDomain     bool
 	MinTLSVersion     string
 
+	// Dynamic root URL settings
+	RootURLMode             string
+	RootURLTrustedOrigins   []string
+
 	// Security settings
 	SecretKey             string
 	EmailCodeValidMinutes int
@@ -2361,6 +2365,10 @@ func (cfg *Cfg) readServerSettings(iniFile *ini.File) error {
 	staticRoot := valueAsString(server, "static_root_path", "")
 	cfg.StaticRootPath = makeAbsolute(staticRoot, cfg.HomePath)
 
+
+	// Dynamic root URL settings
+	cfg.RootURLMode = valueAsString(server, "root_url_mode", "static")
+	cfg.RootURLTrustedOrigins = server.Key("root_url_trusted_origins").Strings(" ")
 	if err := cfg.validateStaticRootPath(); err != nil {
 		return err
 	}
