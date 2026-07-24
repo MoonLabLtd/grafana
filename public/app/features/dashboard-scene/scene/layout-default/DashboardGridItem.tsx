@@ -53,6 +53,7 @@ export class DashboardGridItem
   private _prevRepeatValues?: VariableValueSingle[];
   private _gridSizeSub: Unsubscribable | undefined;
 
+  private _performRepeatTimeoutId?: ReturnType<typeof setTimeout>;
   public constructor(state: DashboardGridItemState) {
     super(state);
 
@@ -66,6 +67,7 @@ export class DashboardGridItem
 
     return () => {
       this._handleGridSizeUnsubscribe();
+      this._clearPerformRepeatTimeout();
     };
   }
 
@@ -79,6 +81,13 @@ export class DashboardGridItem
     if (this._gridSizeSub) {
       this._gridSizeSub.unsubscribe();
       this._gridSizeSub = undefined;
+    }
+  }
+
+  private _clearPerformRepeatTimeout() {
+    if (this._performRepeatTimeoutId) {
+      clearTimeout(this._performRepeatTimeoutId);
+      this._performRepeatTimeoutId = undefined;
     }
   }
 
@@ -229,7 +238,12 @@ export class DashboardGridItem
       this._handleGridSizeUnsubscribe();
     }
 
-    this.performRepeat();
+    // Defer the initial performRepeat to the next macrotask so the parent SceneVariableSet
+    // can activate first under RENDER_BEFORE_ACTIVATION. A sync call here can early-return
+    // while the set is inactive; if the variable completes before activation, the completion
+    // notification does not reach the repeater, causing a permanent loading spinner.
+    this._clearPerformRepeatTimeout();
+    this._performRepeatTimeoutId = setTimeout(() => this.performRepeat(), 0);
   }
 
   public setRepeatByVariable(variableName: string | undefined) {
