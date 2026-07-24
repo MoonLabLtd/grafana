@@ -36,15 +36,16 @@ import (
 
 type SocialBase struct {
 	*oauth2.Config
-	info          *social.OAuthInfo
-	cfg           *setting.Cfg
-	reloadMutex   sync.RWMutex
-	log           log.Logger
-	features      featuremgmt.FeatureToggles
-	orgRoleMapper *OrgRoleMapper
-	orgMappingCfg MappingConfiguration
-	cache         remotecache.CacheStorage
-	providerName  string
+	info               *social.OAuthInfo
+	cfg                *setting.Cfg
+	reloadMutex        sync.RWMutex
+	log                log.Logger
+	features           featuremgmt.FeatureToggles
+	orgRoleMapper      *OrgRoleMapper
+	orgMappingCfg      MappingConfiguration
+	cache              remotecache.CacheStorage
+	providerName       string
+	dynamicRootURLUtil *util.DynamicRootURLService
 }
 
 func newSocialBase(name string,
@@ -66,15 +67,16 @@ func newSocialBaseWithCache(name string,
 	logger := log.New("oauth." + name)
 
 	return &SocialBase{
-		Config:        createOAuthConfig(info, cfg, name),
-		info:          info,
-		log:           logger,
-		features:      features,
-		cfg:           cfg,
-		orgRoleMapper: orgRoleMapper,
-		orgMappingCfg: orgRoleMapper.ParseOrgMappingSettings(context.Background(), info.OrgMapping, info.RoleAttributeStrict),
-		providerName:  name,
-		cache:         cache,
+		Config:             createOAuthConfig(info, cfg, name),
+		info:               info,
+		log:                logger,
+		features:           features,
+		cfg:                cfg,
+		orgRoleMapper:      orgRoleMapper,
+		orgMappingCfg:      orgRoleMapper.ParseOrgMappingSettings(context.Background(), info.OrgMapping, info.RoleAttributeStrict),
+		providerName:       name,
+		cache:              cache,
+		dynamicRootURLUtil: util.NewDynamicRootURLService(cfg.AutoDetectRootURLTrustedOrigins, cfg.AppURL, cfg.AppSubURL),
 	}
 }
 
@@ -120,6 +122,26 @@ func (s *SocialBase) getAuthCodeURL(state string, opts ...oauth2.AuthCodeOption)
 	}
 
 	return s.Config.AuthCodeURL(state, opts...)
+}
+
+// GetDynamicRedirectURL returns the OAuth redirect URL, potentially using a dynamically
+// detected root URL if the feature is enabled and the request context is available.
+func (s *SocialBase) GetDynamicRedirectURL(r *http.Request) string {
+	s.reloadMutex.RLock()
+	defer s.reloadMutex.RUnlock()
+
+	// Check if auto-detect feature is enabled
+	if s.features != nil {
+		//nolint:staticcheck // not yet migrated to OpenFeature
+		if s.features.IsEnabledGlobally(featuremgmt.FlagAutoDetectRootUrl) && r != nil {
+			// Detect root URL from request
+			detectedRootURL := s.dynamicRootURLUtil.DetectRootURL(r)
+			return strings.TrimSuffix(detectedRootURL, "/") + social.SocialBaseUrl + s.providerName
+		}
+	}
+
+	// Fall back to configured redirect URL
+	return s.RedirectURL
 }
 
 func (s *SocialBase) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
