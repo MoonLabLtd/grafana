@@ -47,6 +47,9 @@ func RegisterAppInstaller(
 	appCfg := app.Config{
 		KubeConfig:   restclient.Config{}, // this will be overridden by the installer's InitializeApp method
 		ManifestData: *apis.LocalManifest().ManifestData,
+		SpecificConfig: shorturlapp.ShortURLAppConfig{
+			AppURL: cfg.AppURL,
+		},
 	}
 	i, err := appsdkapiserver.NewDefaultAppInstaller(provider, appCfg, &apis.GoTypeAssociator{})
 	if err != nil {
