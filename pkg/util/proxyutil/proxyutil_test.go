@@ -204,3 +204,59 @@ func TestApplyUserHeader(t *testing.T) {
 		require.Equal(t, "admin", req.Header.Get("X-Grafana-User"))
 	})
 }
+
+func TestApplyForwardIDHeader(t *testing.T) {
+	tests := []struct {
+		name            string
+		forwardIDHeader bool
+		user            identity.Requester
+		expectHeader     bool
+	}{
+		{
+			name:            "should not set header when forwardIDHeader is false",
+			forwardIDHeader: false,
+			user:            &testRequester{idToken: "test-token"},
+			expectHeader:     false,
+		},
+		{
+			name:            "should set header when forwardIDHeader is true",
+			forwardIDHeader: true,
+			user:            &testRequester{idToken: "test-token"},
+			expectHeader:     true,
+		},
+		{
+			name:            "should not set header when user is nil",
+			forwardIDHeader: true,
+			user:            nil,
+			expectHeader:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com", nil)
+			ApplyForwardIDHeader(tt.forwardIDHeader, req, tt.user)
+			
+			header := req.Header.Get(IDHeaderName)
+			if tt.expectHeader && header == "" {
+				t.Error("Expected X-Grafana-Id header to be set")
+			}
+			if !tt.expectHeader && header != "" {
+				t.Errorf("Expected X-Grafana-Id header to not be set, got: %s", header)
+			}
+		})
+	}
+}
+
+type testRequester struct {
+	identity.Requester
+	idToken string
+}
+
+func (r *testRequester) GetIDToken() string {
+	return r.idToken
+}
+
+func (r *testRequester) IsNil() bool {
+	return false
+}

@@ -377,6 +377,7 @@ type Cfg struct {
 
 	// Dataproxy
 	SendUserHeader                 bool
+	ForwardIDHeader                bool
 	DataProxyLogging               bool
 	DataProxyTimeout               int
 	DataProxyDialTimeout           int
