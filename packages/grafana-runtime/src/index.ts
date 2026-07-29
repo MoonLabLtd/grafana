@@ -100,3 +100,4 @@ export { getListedPanelPluginIds, getPanelPluginVersion, isPanelPluginInstalled 
 export { isAppPluginEnabled } from './services/pluginSettings/settings';
 export { useAppPluginEnabled } from './services/pluginSettings/hooks';
 export { createOpenFeatureOFREPWebProvider, createOpenFeatureLocalStorageProvider } from './utils/openfeature';
+export { useSaveBeforeResourceCall } from './utils/useSaveBeforeResourceCall';
