@@ -115,7 +115,11 @@ func ApplyUserHeader(sendUserHeader bool, req *http.Request, user identity.Reque
 	}
 }
 
-func ApplyForwardIDHeader(req *http.Request, user identity.Requester) {
+func ApplyForwardIDHeader(forwardIDHeader bool, req *http.Request, user identity.Requester) {
+	if !forwardIDHeader {
+		return
+	}
+
 	if user == nil || user.IsNil() {
 		return
 	}

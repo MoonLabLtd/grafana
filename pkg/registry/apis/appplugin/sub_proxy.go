@@ -38,6 +38,7 @@ type subProxyREST struct {
 
 	DataProxyLogging bool // from cfg
 	SendUserHeader   bool // from cfg
+	ForwardIDHeader  bool // from cfg
 }
 
 func newProxy(b *AppPluginAPIBuilder) *subProxyREST {
@@ -48,6 +49,7 @@ func newProxy(b *AppPluginAPIBuilder) *subProxyREST {
 		accessControl:    b.opts.AccessControl,
 		DataProxyLogging: b.opts.DataProxyLogging,
 		SendUserHeader:   b.opts.SendUserHeader,
+		ForwardIDHeader:  b.opts.ForwardIDHeader,
 		tracer:           b.tracer,
 		features:         b.features,
 
@@ -129,7 +131,7 @@ func (r *subProxyREST) Connect(ctx context.Context, name string, opts runtime.Ob
 
 		p, err := pluginproxy.NewPluginProxy(ps, r.routes,
 			proxyReq, w, user,
-			proxyPath, r.DataProxyLogging, r.SendUserHeader,
+			proxyPath, r.DataProxyLogging, r.SendUserHeader, r.ForwardIDHeader,
 			secure, r.tracer, r.pluginProxyTransport, r.accessControl, r.features)
 		if err != nil {
 			responder.Error(fmt.Errorf("failed to create plugin proxy: %w", err))

@@ -33,6 +33,7 @@ type PluginProxy struct {
 	matchedRoute     *plugins.Route
 	dataProxyLogging bool // from cfg
 	sendUserHeader   bool // from cfg
+	forwardIDHeader  bool // from cfg
 	secureJsonData   pluginsettings.DecryptedSecureJSONLoader
 	tracer           tracing.Tracer
 	transport        *http.Transport
@@ -43,7 +44,7 @@ type PluginProxy struct {
 func NewPluginProxy(ps *pluginsettings.DTO, routes []*plugins.Route,
 	r *http.Request, w http.ResponseWriter, signedInUser identity.Requester,
 	proxyPath string,
-	dataProxyLogging bool, sendUserHeader bool,
+	dataProxyLogging bool, sendUserHeader bool, forwardIDHeader bool,
 	secureJsonData pluginsettings.DecryptedSecureJSONLoader, tracer tracing.Tracer,
 	transport *http.Transport, accessControl ac.AccessControl, features featuremgmt.FeatureToggles) (*PluginProxy, error) {
 	return &PluginProxy{
@@ -56,6 +57,7 @@ func NewPluginProxy(ps *pluginsettings.DTO, routes []*plugins.Route,
 		proxyPath:        proxyPath,
 		dataProxyLogging: dataProxyLogging,
 		sendUserHeader:   sendUserHeader,
+		forwardIDHeader:  forwardIDHeader,
 		secureJsonData:   secureJsonData,
 		tracer:           tracer,
 		transport:        transport,
@@ -197,7 +199,7 @@ func (proxy PluginProxy) director(req *http.Request) {
 	req.Header.Set("X-Grafana-Context", string(ctxJSON))
 
 	proxyutil.ApplyUserHeader(proxy.sendUserHeader, req, proxy.signedInUser)
-	proxyutil.ApplyForwardIDHeader(req, proxy.signedInUser)
+	proxyutil.ApplyForwardIDHeader(proxy.forwardIDHeader, req, proxy.signedInUser)
 
 	if err := addHeaders(&req.Header, proxy.matchedRoute, data); err != nil {
 		writeJSONErr(proxy.resp, proxy.req, 500, "Failed to render plugin headers", err)
