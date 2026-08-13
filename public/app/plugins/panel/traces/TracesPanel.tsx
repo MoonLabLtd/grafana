@@ -7,6 +7,10 @@ import { Trans } from '@grafana/i18n';
 import { getDataSourceSrv } from '@grafana/runtime';
 import { type DataSourceRef } from '@grafana/schema';
 import { TraceView } from 'app/features/explore/TraceView/TraceView';
+import {
+  type SpanDetailOptions,
+  normalizeSpanDetailOrdering,
+} from 'app/features/explore/TraceView/components/TraceTimelineViewer/SpanDetail/types';
 import { type SpanLinkFunc } from 'app/features/explore/TraceView/components/types/links';
 import { transformDataFrames } from 'app/features/explore/TraceView/utils/transform';
 
@@ -27,11 +31,13 @@ export interface TracesPanelOptions {
   createFocusSpanLink?: (traceId: string, spanId: string) => LinkModel<Field>;
   spanFilters?: TraceSearchProps;
   hideHeaderDetails?: boolean;
+  spanDetail?: SpanDetailOptions;
 }
 
 export const TracesPanel = ({ data, options, replaceVariables }: PanelProps<TracesPanelOptions>) => {
   const topOfViewRef = useRef<HTMLDivElement>(null);
   const traceProp = useMemo(() => transformDataFrames(data.series[0]), [data.series]);
+  const spanDetailOrdering = useMemo(() => normalizeSpanDetailOrdering(options?.spanDetail), [options?.spanDetail]);
   const dataSource = useAsync(async () => {
     const uid = data.request?.targets[0].datasource?.uid ?? options.datasource?.uid;
 
@@ -67,6 +73,8 @@ export const TracesPanel = ({ data, options, replaceVariables }: PanelProps<Trac
         spanFilters={replaceSearchVariables(replaceVariables, options.spanFilters)}
         timeRange={data.timeRange}
         hideHeaderDetails={options.hideHeaderDetails}
+        sectionOrder={spanDetailOrdering.sectionOrder}
+        hiddenSections={spanDetailOrdering.hiddenSections}
       />
     </div>
   );

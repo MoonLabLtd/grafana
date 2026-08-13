@@ -4,6 +4,7 @@ import { t } from '@grafana/i18n';
 import { migrateToAdhocFilters } from '../../../features/explore/TraceView/useSearch';
 
 import { FiltersEditor } from './FiltersEditor';
+import { SpanDetailEditor } from './SpanDetailEditor';
 import { TracesPanel } from './TracesPanel';
 import { tracesSuggestionsSupplier } from './suggestions';
 
@@ -43,5 +44,16 @@ export const plugin = new PanelPlugin(TracesPanel)
         defaultValue: false,
         category,
       });
+
+    const spanDetailCategory = [t('traces.category-span-detail', 'Span detail')];
+
+    builder.addCustomEditor({
+      id: 'spanDetail',
+      name: t('traces.name-span-detail-order', 'Section order'),
+      path: 'spanDetail',
+      category: spanDetailCategory,
+      editor: SpanDetailEditor,
+      defaultValue: undefined,
+    });
   })
   .setSuggestionsSupplier(tracesSuggestionsSupplier);
