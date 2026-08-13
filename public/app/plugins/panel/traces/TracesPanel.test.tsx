@@ -10,8 +10,12 @@ jest.mock('@grafana/runtime', () => ({
   getDataSourceSrv: jest.fn(),
 }));
 
+let lastTraceViewProps: Record<string, unknown> | undefined;
 jest.mock('app/features/explore/TraceView/TraceView', () => ({
-  TraceView: () => <div data-testid="trace-view" />,
+  TraceView: (props: Record<string, unknown>) => {
+    lastTraceViewProps = props;
+    return <div data-testid="trace-view" />;
+  },
 }));
 
 jest.mock('app/features/explore/TraceView/utils/transform', () => ({
@@ -107,5 +111,64 @@ describe('TracesPanel', () => {
     await screen.findByTestId('trace-view');
 
     expect(getMock).not.toHaveBeenCalled();
+  });
+
+  it('normalizes and forwards spanDetail section order and hidden sections to TraceView', async () => {
+    const props = {
+      data: {
+        series: [{ fields: [], length: 0 }],
+        state: LoadingState.Done,
+        timeRange: { from: 0, to: 1 },
+      },
+      options: {
+        spanDetail: {
+          sectionOrder: ['events', 'span'],
+          hiddenSections: ['events'],
+        },
+      },
+      replaceVariables: (v: string) => v,
+    } as unknown as PanelProps;
+
+    render(<TracesPanel {...props} />);
+
+    await screen.findByTestId('trace-view');
+
+    expect(lastTraceViewProps?.sectionOrder).toEqual([
+      'events',
+      'span',
+      'resource',
+      'warnings',
+      'stack',
+      'references',
+      'flame',
+    ]);
+    expect(lastTraceViewProps?.hiddenSections).toEqual(['events']);
+  });
+
+  it('forwards the default section order when spanDetail is not configured', async () => {
+    const props = {
+      data: {
+        series: [{ fields: [], length: 0 }],
+        state: LoadingState.Done,
+        timeRange: { from: 0, to: 1 },
+      },
+      options: {},
+      replaceVariables: (v: string) => v,
+    } as unknown as PanelProps;
+
+    render(<TracesPanel {...props} />);
+
+    await screen.findByTestId('trace-view');
+
+    expect(lastTraceViewProps?.sectionOrder).toEqual([
+      'span',
+      'resource',
+      'events',
+      'warnings',
+      'stack',
+      'references',
+      'flame',
+    ]);
+    expect(lastTraceViewProps?.hiddenSections).toEqual([]);
   });
 });

@@ -53,6 +53,7 @@ import type DetailState from './DetailState';
 import { ShareSpanButton } from './ShareSpanButton';
 import { SpanDetailLinkButtons } from './SpanDetailLinkButtons';
 import SpanFlameGraph from './SpanFlameGraph';
+import { type SpanDetailSectionId, normalizeSpanDetailHiddenSections, normalizeSpanDetailSectionOrder } from './types';
 
 const useResourceAttributesExtensionLinks = ({
   process,
@@ -266,6 +267,8 @@ export type SpanDetailProps = {
   setRedrawListView: (redraw: {}) => void;
   timeRange: TimeRange;
   app: CoreApp;
+  sectionOrder?: SpanDetailSectionId[];
+  hiddenSections?: SpanDetailSectionId[];
 };
 
 export default function SpanDetail(props: SpanDetailProps) {
@@ -409,108 +412,122 @@ export default function SpanDetail(props: SpanDetailProps) {
     spanStartTime: startTime,
   });
 
-  const listOfContentCards = [];
+  const sectionOrder = normalizeSpanDetailSectionOrder(props.sectionOrder);
+  const hiddenSections = normalizeSpanDetailHiddenSections(props.hiddenSections);
 
-  listOfContentCards.push(
-    <AccordionCategorizedKeyValues
-      data={tags}
-      sectionType="span"
-      label={t('explore.span-detail.label-span-attributes', 'Span attributes')}
-      isOpen={isTagsOpen}
-      linksGetter={resourceLinksGetter}
-      onToggle={() => tagsToggle(spanID)}
-    />
-  );
+  const sectionsByType: Partial<Record<SpanDetailSectionId, { available: boolean; render: () => React.ReactNode }>> = {
+    span: {
+      available: true,
+      render: () => (
+        <AccordionCategorizedKeyValues
+          data={tags}
+          sectionType="span"
+          label={t('explore.span-detail.label-span-attributes', 'Span attributes')}
+          isOpen={isTagsOpen}
+          linksGetter={resourceLinksGetter}
+          onToggle={() => tagsToggle(spanID)}
+        />
+      ),
+    },
+    resource: {
+      available: Boolean(process.tags),
+      render: () => (
+        <AccordionCategorizedKeyValues
+          data={process.tags}
+          sectionType="resource"
+          label={t('explore.span-detail.label-resource-attributes', 'Resource attributes')}
+          linksGetter={resourceLinksGetter}
+          isOpen={isProcessOpen}
+          onToggle={() => processToggle(spanID)}
+        />
+      ),
+    },
+    events: {
+      available: Boolean(logs && logs.length > 0),
+      render: () => (
+        <AccordionLogs
+          logs={logs}
+          isOpen={logsState.isOpen}
+          openedItems={logsState.openedItems}
+          onToggle={() => logsToggle(spanID)}
+          onItemToggle={(logItem) => logItemToggle(spanID, logItem)}
+          timestamp={traceStartTime}
+        />
+      ),
+    },
+    warnings: {
+      available: Boolean(warnings && warnings.length > 0),
+      render: () => (
+        <AccordionKeyValues
+          data={warnings.map((warning) => ({
+            key: '',
+            value: warning,
+            type: 'warning',
+          }))}
+          onlyValues={true}
+          showSummary={false}
+          showCountBadge={true}
+          isOpen={isWarningsOpen}
+          onToggle={() => warningsToggle(spanID)}
+          label={t('explore.span-detail.label-warnings', 'Warnings')}
+        />
+      ),
+    },
+    stack: {
+      available: Boolean(stackTraces && stackTraces.length > 0),
+      render: () => (
+        <AccordionKeyValues
+          data={(stackTraces ?? []).map((stackTrace) => ({
+            key: '',
+            value: stackTrace,
+            type: 'code',
+          }))}
+          onlyValues={true}
+          showSummary={false}
+          showCountBadge={true}
+          isOpen={isStackTracesOpen}
+          onToggle={() => stackTracesToggle(spanID)}
+          label={t('explore.span-detail.label-stack-trace', 'Stack trace')}
+        />
+      ),
+    },
+    references: {
+      available: Boolean(
+        references && references.length > 0 && (references.length > 1 || references[0].refType !== 'CHILD_OF')
+      ),
+      render: () => (
+        <AccordionReferences
+          data={references}
+          isOpen={referencesState.isOpen}
+          openedItems={referencesState.openedItems}
+          onToggle={() => referencesToggle(spanID)}
+          onItemToggle={(reference) => referenceItemToggle(spanID, reference)}
+          createFocusSpanLink={createFocusSpanLink}
+        />
+      ),
+    },
+    flame: {
+      available: span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey),
+      render: () => (
+        <SpanFlameGraph
+          span={span}
+          timeZone={timeZone}
+          traceFlameGraphs={traceFlameGraphs}
+          setTraceFlameGraphs={setTraceFlameGraphs}
+          traceToProfilesOptions={traceToProfilesOptions}
+          setRedrawListView={setRedrawListView}
+          traceDuration={traceDuration}
+          traceName={traceName}
+        />
+      ),
+    },
+  };
 
-  if (process.tags) {
-    listOfContentCards.push(
-      <AccordionCategorizedKeyValues
-        data={process.tags}
-        sectionType="resource"
-        label={t('explore.span-detail.label-resource-attributes', 'Resource attributes')}
-        linksGetter={resourceLinksGetter}
-        isOpen={isProcessOpen}
-        onToggle={() => processToggle(spanID)}
-      />
-    );
-  }
-
-  if (logs && logs.length > 0) {
-    listOfContentCards.push(
-      <AccordionLogs
-        logs={logs}
-        isOpen={logsState.isOpen}
-        openedItems={logsState.openedItems}
-        onToggle={() => logsToggle(spanID)}
-        onItemToggle={(logItem) => logItemToggle(spanID, logItem)}
-        timestamp={traceStartTime}
-      />
-    );
-  }
-
-  if (warnings && warnings.length > 0) {
-    listOfContentCards.push(
-      <AccordionKeyValues
-        data={warnings.map((warning) => ({
-          key: '',
-          value: warning,
-          type: 'warning',
-        }))}
-        onlyValues={true}
-        showSummary={false}
-        showCountBadge={true}
-        isOpen={isWarningsOpen}
-        onToggle={() => warningsToggle(spanID)}
-        label={t('explore.span-detail.label-warnings', 'Warnings')}
-      />
-    );
-  }
-
-  if (stackTraces?.length) {
-    listOfContentCards.push(
-      <AccordionKeyValues
-        data={stackTraces.map((stackTrace) => ({
-          key: '',
-          value: stackTrace,
-          type: 'code',
-        }))}
-        onlyValues={true}
-        showSummary={false}
-        showCountBadge={true}
-        isOpen={isStackTracesOpen}
-        onToggle={() => stackTracesToggle(spanID)}
-        label={t('explore.span-detail.label-stack-trace', 'Stack trace')}
-      />
-    );
-  }
-
-  if (references && references.length > 0 && (references.length > 1 || references[0].refType !== 'CHILD_OF')) {
-    listOfContentCards.push(
-      <AccordionReferences
-        data={references}
-        isOpen={referencesState.isOpen}
-        openedItems={referencesState.openedItems}
-        onToggle={() => referencesToggle(spanID)}
-        onItemToggle={(reference) => referenceItemToggle(spanID, reference)}
-        createFocusSpanLink={createFocusSpanLink}
-      />
-    );
-  }
-
-  if (span.tags.some((tag) => tag.key === pyroscopeProfileIdTagKey)) {
-    listOfContentCards.push(
-      <SpanFlameGraph
-        span={span}
-        timeZone={timeZone}
-        traceFlameGraphs={traceFlameGraphs}
-        setTraceFlameGraphs={setTraceFlameGraphs}
-        traceToProfilesOptions={traceToProfilesOptions}
-        setRedrawListView={setRedrawListView}
-        traceDuration={traceDuration}
-        traceName={traceName}
-      />
-    );
-  }
+  const listOfContentCards = sectionOrder
+    .filter((sectionId) => !hiddenSections.includes(sectionId))
+    .map((sectionId) => sectionsByType[sectionId])
+    .filter((section) => Boolean(section?.available))
+    .map((section) => section!.render());
 
   return (
     <div data-testid="span-detail-component" ref={mainContainerRef} className={styles.spanDetailComponent}>

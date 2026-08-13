@@ -318,4 +318,66 @@ describe('<SpanDetail>', () => {
       })
     );
   });
+
+  describe('span detail section ordering', () => {
+    const sectionNames = ['Span attributes', 'Resource attributes', 'Events', 'Warnings', 'Stack trace', 'References'];
+
+    const renderSectionLabels = () => {
+      // measurements disabled (mockMeasuredWidth = 0) -> single column
+      const column = screen.getByTestId('span-detail-cards-column');
+      return Array.from(column.querySelectorAll('[role="switch"]'))
+        .map((el) => el.querySelector('strong')?.textContent ?? '')
+        .map((label) => sectionNames.find((name) => label.startsWith(name)))
+        .filter((name): name is string => Boolean(name));
+    };
+
+    it('renders sections in the default order when sectionOrder is undefined', () => {
+      render(<SpanDetail {...(props as unknown as SpanDetailProps)} />);
+      expect(renderSectionLabels()).toEqual([
+        'Span attributes',
+        'Resource attributes',
+        'Events',
+        'Warnings',
+        'References',
+      ]);
+    });
+
+    it('renders sections in a custom order', () => {
+      render(
+        <SpanDetail
+          {...(props as unknown as SpanDetailProps)}
+          sectionOrder={['events', 'span', 'resource', 'warnings', 'stack', 'references', 'flame']}
+        />
+      );
+      expect(renderSectionLabels()).toEqual([
+        'Events',
+        'Span attributes',
+        'Resource attributes',
+        'Warnings',
+        'References',
+      ]);
+    });
+
+    it('omits sections whose data is absent regardless of their position in sectionOrder', () => {
+      render(
+        <SpanDetail
+          {...(props as unknown as SpanDetailProps)}
+          span={{ ...span, logs: [], stackTraces: [] }}
+          sectionOrder={['stack', 'events', 'span', 'resource', 'warnings', 'references', 'flame']}
+        />
+      );
+      expect(renderSectionLabels()).toEqual(['Span attributes', 'Resource attributes', 'Warnings', 'References']);
+    });
+
+    it('suppresses hidden sections even when their data is present', () => {
+      render(
+        <SpanDetail
+          {...(props as unknown as SpanDetailProps)}
+          sectionOrder={['events', 'span', 'resource', 'warnings', 'stack', 'references', 'flame']}
+          hiddenSections={['events']}
+        />
+      );
+      expect(renderSectionLabels()).toEqual(['Span attributes', 'Resource attributes', 'Warnings', 'References']);
+    });
+  });
 });
