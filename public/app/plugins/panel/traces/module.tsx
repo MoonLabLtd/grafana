@@ -4,6 +4,7 @@ import { t } from '@grafana/i18n';
 import { migrateToAdhocFilters } from '../../../features/explore/TraceView/useSearch';
 
 import { FiltersEditor } from './FiltersEditor';
+import { SectionOrderEditor } from './SectionOrderEditor';
 import { TracesPanel } from './TracesPanel';
 import { tracesSuggestionsSupplier } from './suggestions';
 
@@ -43,5 +44,20 @@ export const plugin = new PanelPlugin(TracesPanel)
         defaultValue: false,
         category,
       });
+
+    const sectionOrderCategory = [t('traces.category-span-detail', 'Span detail')];
+
+    builder.addCustomEditor({
+      id: 'spanDetailSectionOrder',
+      path: 'spanDetailSectionOrder',
+      name: t('traces.name-span-detail-section-order', 'Span detail section order'),
+      description: t(
+        'traces.description-span-detail-section-order',
+        'Drag to set the display order of span detail sections for this panel. Absent sections are skipped per span.'
+      ),
+      category: sectionOrderCategory,
+      editor: SectionOrderEditor,
+      defaultValue: undefined,
+    });
   })
   .setSuggestionsSupplier(tracesSuggestionsSupplier);

@@ -34,6 +34,7 @@ import { TracePageHeader } from './components/TracePageHeader/TracePageHeader';
 import TraceTimelineViewer from './components/TraceTimelineViewer';
 import { spanHasAdaptiveTraceRestoredTag } from './components/TraceTimelineViewer/SpanBarRow';
 import { type TraceFlameGraphs } from './components/TraceTimelineViewer/SpanDetail';
+import { type SectionId } from './components/TraceTimelineViewer/SpanDetail/sectionOrder';
 import { type SpanBarOptionsData } from './components/settings/SpanBarSettings';
 import type TTraceTimeline from './components/types/TTraceTimeline';
 import { type SpanLinkFunc } from './components/types/links';
@@ -73,6 +74,7 @@ type Props = {
   spanFilters?: TraceSearchProps;
   timeRange: TimeRange;
   hideHeaderDetails?: boolean;
+  spanDetailSectionOrder?: SectionId[];
 };
 
 export function TraceView(props: Props) {
@@ -266,6 +268,7 @@ export function TraceView(props: Props) {
             setRedrawListView={setRedrawListView}
             timeRange={props.timeRange}
             app={exploreId ? CoreApp.Explore : CoreApp.Unknown}
+            spanDetailSectionOrder={props.spanDetailSectionOrder}
           />
         </>
       ) : (

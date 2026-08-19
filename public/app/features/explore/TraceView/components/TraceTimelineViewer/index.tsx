@@ -29,6 +29,7 @@ import { type SpanLinkFunc } from '../types/links';
 import { type TraceSpan, type Trace, type TraceSpanReference, type CriticalPathSection } from '../types/trace';
 
 import { type TraceFlameGraphs } from './SpanDetail';
+import { type SectionId } from './SpanDetail/sectionOrder';
 import TimelineHeaderRow from './TimelineHeaderRow/TimelineHeaderRow';
 import VirtualizedTraceView from './VirtualizedTraceView';
 import { type TUpdateViewRangeTimeFunction, type ViewRange, type ViewRangeTimeUpdate } from './types';
@@ -114,6 +115,7 @@ export type TProps = {
   setRedrawListView: (redraw: {}) => void;
   timeRange: TimeRange;
   app: CoreApp;
+  spanDetailSectionOrder?: SectionId[];
 };
 
 const NUM_TICKS = 5;
