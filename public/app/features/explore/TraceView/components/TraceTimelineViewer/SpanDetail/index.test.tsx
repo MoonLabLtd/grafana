@@ -132,6 +132,8 @@ describe('<SpanDetail>', () => {
 
   span.warnings = ['Warning 1', 'Warning 2'];
 
+  span.stackTraces = ['java.lang.RuntimeException: boom'];
+
   span.references = [
     {
       refType: 'CHILD_OF',
@@ -317,5 +319,122 @@ describe('<SpanDetail>', () => {
         }),
       })
     );
+  });
+
+  describe('span detail section order', () => {
+    const sectionHeaderPattern = /^(Span attributes|Resource attributes|Events|Warnings|Stack trace)$/;
+
+    const getSectionSwitchNames = () => {
+      const column = screen.getByTestId('span-detail-cards-column');
+      return Array.from(column.querySelectorAll<HTMLElement>(':scope > *'))
+        .map((card) => {
+          const sw = card.querySelector<HTMLElement>('[role="switch"]');
+          return (sw?.textContent ?? '').replace(/\d+$/, '').trim();
+        })
+        .filter((label) => sectionHeaderPattern.test(label));
+    };
+
+    it('renders sections in the default order when no prop is provided', () => {
+      render(<SpanDetail {...(props as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Span attributes',
+        'Resource attributes',
+        'Events',
+        'Warnings',
+        'Stack trace',
+      ]);
+    });
+
+    it('renders sections in the configured order', () => {
+      const orderedProps = {
+        ...props,
+        spanDetailSectionOrder: ['events', 'spanAttributes', 'resourceAttributes', 'warnings', 'stackTraces'],
+      };
+      render(<SpanDetail {...(orderedProps as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Events',
+        'Span attributes',
+        'Resource attributes',
+        'Warnings',
+        'Stack trace',
+      ]);
+    });
+
+    it('skips sections that are absent for the span without placeholders', () => {
+      const noStackNoWarnings = { ...props, span: { ...props.span, warnings: [], stackTraces: [] } };
+      render(<SpanDetail {...(noStackNoWarnings as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual(['Span attributes', 'Resource attributes', 'Events']);
+    });
+
+    it('ignores unknown section ids and appends missing known sections in default order', () => {
+      const unknownIdProps = {
+        ...props,
+        spanDetailSectionOrder: [
+          'unknownSection',
+          'events',
+          'spanAttributes',
+          'unknownSection',
+          // omitted: resourceAttributes, warnings, stackTraces
+        ],
+      };
+      render(<SpanDetail {...(unknownIdProps as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Events',
+        'Span attributes',
+        'Resource attributes',
+        'Warnings',
+        'Stack trace',
+      ]);
+    });
+
+    it('deduplicates section ids preserving the first occurrence', () => {
+      const duplicateProps = {
+        ...props,
+        spanDetailSectionOrder: [
+          'events',
+          'events',
+          'spanAttributes',
+          'spanAttributes',
+          'warnings',
+          'stackTraces',
+          'resourceAttributes',
+        ],
+      };
+      render(<SpanDetail {...(duplicateProps as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Events',
+        'Span attributes',
+        'Warnings',
+        'Stack trace',
+        'Resource attributes',
+      ]);
+    });
+
+    it('falls back to the default order for an empty array', () => {
+      const emptyProps = { ...props, spanDetailSectionOrder: [] };
+      render(<SpanDetail {...(emptyProps as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Span attributes',
+        'Resource attributes',
+        'Events',
+        'Warnings',
+        'Stack trace',
+      ]);
+    });
+
+    it('handles an array with reversed order of all five sections', () => {
+      const reversedProps = {
+        ...props,
+        spanDetailSectionOrder: ['stackTraces', 'warnings', 'events', 'resourceAttributes', 'spanAttributes'],
+      };
+      render(<SpanDetail {...(reversedProps as unknown as SpanDetailProps)} />);
+      expect(getSectionSwitchNames()).toEqual([
+        'Stack trace',
+        'Warnings',
+        'Events',
+        'Resource attributes',
+        'Span attributes',
+      ]);
+    });
   });
 });

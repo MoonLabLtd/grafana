@@ -11,8 +11,13 @@ jest.mock('@grafana/runtime', () => ({
 }));
 
 jest.mock('app/features/explore/TraceView/TraceView', () => ({
-  TraceView: () => <div data-testid="trace-view" />,
+  TraceView: (...args: unknown[]) => {
+    mockTraceView(...args);
+    return <div data-testid="trace-view" />;
+  },
 }));
+
+const mockTraceView = jest.fn();
 
 jest.mock('app/features/explore/TraceView/utils/transform', () => ({
   transformDataFrames: jest.fn(() => ({ traceID: 'test-trace' })),
@@ -29,6 +34,33 @@ describe('TracesPanel', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('forwards spanDetailSectionOrder from options to TraceView', async () => {
+    const props = {
+      data: {
+        series: [{ fields: [], length: 0 }],
+        state: LoadingState.Done,
+        timeRange: { from: 0, to: 1 },
+      },
+      options: {
+        spanDetailSectionOrder: ['events', 'spanAttributes', 'resourceAttributes', 'warnings', 'stackTraces'],
+      },
+      replaceVariables: (v: string) => v,
+    } as unknown as PanelProps;
+
+    render(<TracesPanel {...props} />);
+
+    await screen.findByTestId('trace-view');
+
+    const renderProps = mockTraceView.mock.calls[0][0] as { spanDetailSectionOrder?: string[] };
+    expect(renderProps.spanDetailSectionOrder).toEqual([
+      'events',
+      'spanAttributes',
+      'resourceAttributes',
+      'warnings',
+      'stackTraces',
+    ]);
   });
 
   it('shows no data message when no data supplied', async () => {

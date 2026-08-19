@@ -53,6 +53,7 @@ import type DetailState from './DetailState';
 import { ShareSpanButton } from './ShareSpanButton';
 import { SpanDetailLinkButtons } from './SpanDetailLinkButtons';
 import SpanFlameGraph from './SpanFlameGraph';
+import { normalizeSectionOrder, type SectionId } from './sectionOrder';
 
 const useResourceAttributesExtensionLinks = ({
   process,
@@ -266,6 +267,8 @@ export type SpanDetailProps = {
   setRedrawListView: (redraw: {}) => void;
   timeRange: TimeRange;
   app: CoreApp;
+  /** Optional per-panel order of span detail sections. Absent/empty falls back to the default order. */
+  spanDetailSectionOrder?: SectionId[];
 };
 
 export default function SpanDetail(props: SpanDetailProps) {
@@ -294,6 +297,7 @@ export default function SpanDetail(props: SpanDetailProps) {
     setRedrawListView,
     timeRange,
     app,
+    spanDetailSectionOrder,
   } = props;
   const {
     isTagsOpen,
@@ -409,80 +413,81 @@ export default function SpanDetail(props: SpanDetailProps) {
     spanStartTime: startTime,
   });
 
+  const sectionRenderers: Record<SectionId, () => React.ReactNode> = {
+    spanAttributes: () => (
+      <AccordionCategorizedKeyValues
+        data={tags}
+        sectionType="span"
+        label={t('explore.span-detail.label-span-attributes', 'Span attributes')}
+        isOpen={isTagsOpen}
+        linksGetter={resourceLinksGetter}
+        onToggle={() => tagsToggle(spanID)}
+      />
+    ),
+    resourceAttributes: () =>
+      process.tags ? (
+        <AccordionCategorizedKeyValues
+          data={process.tags}
+          sectionType="resource"
+          label={t('explore.span-detail.label-resource-attributes', 'Resource attributes')}
+          linksGetter={resourceLinksGetter}
+          isOpen={isProcessOpen}
+          onToggle={() => processToggle(spanID)}
+        />
+      ) : null,
+    events: () =>
+      logs && logs.length > 0 ? (
+        <AccordionLogs
+          logs={logs}
+          isOpen={logsState.isOpen}
+          openedItems={logsState.openedItems}
+          onToggle={() => logsToggle(spanID)}
+          onItemToggle={(logItem) => logItemToggle(spanID, logItem)}
+          timestamp={traceStartTime}
+        />
+      ) : null,
+    warnings: () =>
+      warnings && warnings.length > 0 ? (
+        <AccordionKeyValues
+          data={warnings.map((warning) => ({
+            key: '',
+            value: warning,
+            type: 'warning',
+          }))}
+          onlyValues={true}
+          showSummary={false}
+          showCountBadge={true}
+          isOpen={isWarningsOpen}
+          onToggle={() => warningsToggle(spanID)}
+          label={t('explore.span-detail.label-warnings', 'Warnings')}
+        />
+      ) : null,
+    stackTraces: () =>
+      stackTraces?.length ? (
+        <AccordionKeyValues
+          data={stackTraces.map((stackTrace) => ({
+            key: '',
+            value: stackTrace,
+            type: 'code',
+          }))}
+          onlyValues={true}
+          showSummary={false}
+          showCountBadge={true}
+          isOpen={isStackTracesOpen}
+          onToggle={() => stackTracesToggle(spanID)}
+          label={t('explore.span-detail.label-stack-trace', 'Stack trace')}
+        />
+      ) : null,
+  };
+
   const listOfContentCards = [];
 
-  listOfContentCards.push(
-    <AccordionCategorizedKeyValues
-      data={tags}
-      sectionType="span"
-      label={t('explore.span-detail.label-span-attributes', 'Span attributes')}
-      isOpen={isTagsOpen}
-      linksGetter={resourceLinksGetter}
-      onToggle={() => tagsToggle(spanID)}
-    />
-  );
-
-  if (process.tags) {
-    listOfContentCards.push(
-      <AccordionCategorizedKeyValues
-        data={process.tags}
-        sectionType="resource"
-        label={t('explore.span-detail.label-resource-attributes', 'Resource attributes')}
-        linksGetter={resourceLinksGetter}
-        isOpen={isProcessOpen}
-        onToggle={() => processToggle(spanID)}
-      />
-    );
-  }
-
-  if (logs && logs.length > 0) {
-    listOfContentCards.push(
-      <AccordionLogs
-        logs={logs}
-        isOpen={logsState.isOpen}
-        openedItems={logsState.openedItems}
-        onToggle={() => logsToggle(spanID)}
-        onItemToggle={(logItem) => logItemToggle(spanID, logItem)}
-        timestamp={traceStartTime}
-      />
-    );
-  }
-
-  if (warnings && warnings.length > 0) {
-    listOfContentCards.push(
-      <AccordionKeyValues
-        data={warnings.map((warning) => ({
-          key: '',
-          value: warning,
-          type: 'warning',
-        }))}
-        onlyValues={true}
-        showSummary={false}
-        showCountBadge={true}
-        isOpen={isWarningsOpen}
-        onToggle={() => warningsToggle(spanID)}
-        label={t('explore.span-detail.label-warnings', 'Warnings')}
-      />
-    );
-  }
-
-  if (stackTraces?.length) {
-    listOfContentCards.push(
-      <AccordionKeyValues
-        data={stackTraces.map((stackTrace) => ({
-          key: '',
-          value: stackTrace,
-          type: 'code',
-        }))}
-        onlyValues={true}
-        showSummary={false}
-        showCountBadge={true}
-        isOpen={isStackTracesOpen}
-        onToggle={() => stackTracesToggle(spanID)}
-        label={t('explore.span-detail.label-stack-trace', 'Stack trace')}
-      />
-    );
-  }
+  normalizeSectionOrder(spanDetailSectionOrder).forEach((sectionId) => {
+    const card = sectionRenderers[sectionId]();
+    if (card) {
+      listOfContentCards.push(card);
+    }
+  });
 
   if (references && references.length > 0 && (references.length > 1 || references[0].refType !== 'CHILD_OF')) {
     listOfContentCards.push(

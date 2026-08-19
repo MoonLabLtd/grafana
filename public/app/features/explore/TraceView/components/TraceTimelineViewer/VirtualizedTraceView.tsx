@@ -38,6 +38,7 @@ import ListView from './ListView';
 import { SpanBarRow } from './SpanBarRow';
 import { type TraceFlameGraphs } from './SpanDetail';
 import type DetailState from './SpanDetail/DetailState';
+import { type SectionId } from './SpanDetail/sectionOrder';
 import SpanDetailRow from './SpanDetailRow';
 import {
   createViewedBoundsFunc,
@@ -114,6 +115,7 @@ type TVirtualizedTraceViewOwnProps = {
   setRedrawListView: (redraw: {}) => void;
   timeRange: TimeRange;
   app: CoreApp;
+  spanDetailSectionOrder?: SectionId[];
 };
 
 export type VirtualizedTraceViewProps = TVirtualizedTraceViewOwnProps & TTraceTimeline;
@@ -553,6 +555,7 @@ class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTraceViewP
       setRedrawListView,
       timeRange,
       app,
+      spanDetailSectionOrder,
     } = this.props;
     const detailState = detailStates.get(spanID);
     if (!trace || !detailState) {
@@ -596,6 +599,7 @@ class UnthemedVirtualizedTraceView extends React.Component<VirtualizedTraceViewP
           setRedrawListView={setRedrawListView}
           timeRange={timeRange}
           app={app}
+          spanDetailSectionOrder={spanDetailSectionOrder}
         />
       </div>
     );

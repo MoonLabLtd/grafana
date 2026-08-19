@@ -7,6 +7,7 @@ import { Trans } from '@grafana/i18n';
 import { getDataSourceSrv } from '@grafana/runtime';
 import { type DataSourceRef } from '@grafana/schema';
 import { TraceView } from 'app/features/explore/TraceView/TraceView';
+import { type SectionId } from 'app/features/explore/TraceView/components/TraceTimelineViewer/SpanDetail/sectionOrder';
 import { type SpanLinkFunc } from 'app/features/explore/TraceView/components/types/links';
 import { transformDataFrames } from 'app/features/explore/TraceView/utils/transform';
 
@@ -27,6 +28,8 @@ export interface TracesPanelOptions {
   createFocusSpanLink?: (traceId: string, spanId: string) => LinkModel<Field>;
   spanFilters?: TraceSearchProps;
   hideHeaderDetails?: boolean;
+  /** Optional per-panel order of span detail sections. Absent/empty falls back to the default order. */
+  spanDetailSectionOrder?: SectionId[];
 }
 
 export const TracesPanel = ({ data, options, replaceVariables }: PanelProps<TracesPanelOptions>) => {
@@ -67,6 +70,7 @@ export const TracesPanel = ({ data, options, replaceVariables }: PanelProps<Trac
         spanFilters={replaceSearchVariables(replaceVariables, options.spanFilters)}
         timeRange={data.timeRange}
         hideHeaderDetails={options.hideHeaderDetails}
+        spanDetailSectionOrder={options.spanDetailSectionOrder}
       />
     </div>
   );

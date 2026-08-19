@@ -25,6 +25,7 @@ import { type TraceSpan, type TraceSpanReference } from '../types/trace';
 
 import SpanDetail, { type TraceFlameGraphs } from './SpanDetail';
 import type DetailState from './SpanDetail/DetailState';
+import { type SectionId } from './SpanDetail/sectionOrder';
 import SpanTreeOffset from './SpanTreeOffset';
 import TimelineRow from './TimelineRow';
 
@@ -117,6 +118,7 @@ export type SpanDetailRowProps = {
   setRedrawListView: (redraw: {}) => void;
   timeRange: TimeRange;
   app: CoreApp;
+  spanDetailSectionOrder?: SectionId[];
 };
 
 const UnthemedSpanDetailRow = React.memo<SpanDetailRowProps>((props) => {
@@ -152,6 +154,7 @@ const UnthemedSpanDetailRow = React.memo<SpanDetailRowProps>((props) => {
     addHoverIndentGuideId,
     removeHoverIndentGuideId,
     visibleSpanIds,
+    spanDetailSectionOrder,
   } = props;
 
   const styles = getStyles(theme);
@@ -199,6 +202,7 @@ const UnthemedSpanDetailRow = React.memo<SpanDetailRowProps>((props) => {
               setRedrawListView={setRedrawListView}
               timeRange={timeRange}
               app={app}
+              spanDetailSectionOrder={spanDetailSectionOrder}
             />
           </div>
         </div>
