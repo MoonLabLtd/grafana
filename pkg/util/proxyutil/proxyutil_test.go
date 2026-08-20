@@ -204,3 +204,37 @@ func TestApplyUserHeader(t *testing.T) {
 		require.Equal(t, "admin", req.Header.Get("X-Grafana-User"))
 	})
 }
+
+func TestApplyForwardIDHeader(t *testing.T) {
+	t.Run("Should not apply ID header when not enabled", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyForwardIDHeader(false, req, &user.SignedInUser{IDToken: "test-token"})
+		require.NotContains(t, req.Header, "X-Grafana-Id")
+	})
+
+	t.Run("Should not apply ID header when user is nil", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyForwardIDHeader(true, req, nil)
+		require.NotContains(t, req.Header, "X-Grafana-Id")
+	})
+
+	t.Run("Should not apply ID header when user has no ID token", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyForwardIDHeader(true, req, &user.SignedInUser{})
+		require.NotContains(t, req.Header, "X-Grafana-Id")
+	})
+
+	t.Run("Should apply ID header when enabled and user has ID token", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyForwardIDHeader(true, req, &user.SignedInUser{IDToken: "test-token"})
+		require.Equal(t, "test-token", req.Header.Get("X-Grafana-Id"))
+	})
+}

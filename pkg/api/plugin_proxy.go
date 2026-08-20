@@ -59,7 +59,7 @@ func (hs *HTTPServer) ProxyPluginRequest(c *contextmodel.ReqContext) {
 
 	p, err := pluginproxy.NewPluginProxy(ps, plugin.Routes,
 		c.Req, c.Resp, c.SignedInUser,
-		proxyPath, hs.Cfg.DataProxyLogging, hs.Cfg.SendUserHeader,
+		proxyPath, hs.Cfg.DataProxyLogging, hs.Cfg.SendUserHeader, hs.Cfg.ForwardIDHeader,
 		secureJsonData, hs.tracer, pluginProxyTransport, hs.AccessControl, hs.Features)
 	if err != nil {
 		c.JsonApiErr(http.StatusInternalServerError, "Failed to create plugin proxy", err)
