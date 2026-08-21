@@ -185,24 +185,32 @@ describe('ExtensionSidebarProvider', () => {
     expect(store.delete).toHaveBeenCalledWith(EXTENSION_SIDEBAR_DOCKED_LOCAL_STORAGE_KEY);
   });
 
-  it('should only include permitted plugins in available components', () => {
-    const permittedPluginMeta = {
+  it('should include third-party plugins in available components (allow-list removed)', () => {
+    const internalPluginMeta = {
       pluginId: 'grafana-assistant-app',
       addedComponents: [mockComponent],
       addedLinks: [],
     };
 
-    const prohibitedPluginMeta = {
-      pluginId: 'disabled-plugin',
-      addedComponents: [mockComponent],
+    const thirdPartyPluginMeta = {
+      pluginId: 'infrawatch-app',
+      addedComponents: [mockDifferentComponent],
       addedLinks: [],
     };
+
+    jest.requireMock('@grafana/runtime').usePluginLinks.mockImplementation(() => ({
+      links: [
+        { pluginId: internalPluginMeta.pluginId, title: mockComponent.title },
+        { pluginId: thirdPartyPluginMeta.pluginId, title: mockDifferentComponent.title },
+      ],
+      isLoading: false,
+    }));
 
     useAsyncMock.mockReturnValue({
       loading: false,
       value: new Map([
-        [permittedPluginMeta.pluginId, permittedPluginMeta],
-        [prohibitedPluginMeta.pluginId, prohibitedPluginMeta],
+        [internalPluginMeta.pluginId, internalPluginMeta],
+        [thirdPartyPluginMeta.pluginId, thirdPartyPluginMeta],
       ]),
     });
 
@@ -212,9 +220,9 @@ describe('ExtensionSidebarProvider', () => {
       </ExtensionSidebarContextProvider>
     );
 
-    // Should only include the enabled plugin
-    expect(screen.getByTestId('available-components-size')).toHaveTextContent('1');
-    expect(screen.getByTestId('plugin-ids')).toHaveTextContent(permittedPluginMeta.pluginId);
+    // Both the internal and the previously-unlisted third-party plugin are included
+    expect(screen.getByTestId('available-components-size')).toHaveTextContent('2');
+    expect(screen.getByTestId('plugin-ids')).toHaveTextContent(thirdPartyPluginMeta.pluginId);
   });
 
   it('should subscribe to OpenExtensionSidebarEvent and CloseExtensionSidebarEvent when feature is enabled', async () => {
