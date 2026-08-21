@@ -8,6 +8,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
+	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/services/shorturls"
 	"github.com/grafana/grafana/pkg/util"
@@ -89,7 +90,7 @@ func (s ShortURLService) DeleteStaleShortURLs(ctx context.Context, cmd *shorturl
 }
 
 func (s ShortURLService) ConvertShortURLToDTO(shortURL *shorturls.ShortUrl, appURL string) *dtos.ShortURL {
-	url := fmt.Sprintf("%s/goto/%s?orgId=%d", strings.TrimSuffix(appURL, "/"), shortURL.Uid, shortURL.OrgId)
+	url := fmt.Sprintf("%s/goto/%s?orgId=%d", utils.TrimTrailingSlash(appURL), shortURL.Uid, shortURL.OrgId)
 
 	return &dtos.ShortURL{
 		UID: shortURL.Uid,

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -19,10 +18,15 @@ import (
 	"github.com/grafana/grafana-app-sdk/simple"
 	shorturlv1beta1 "github.com/grafana/grafana/apps/shorturl/pkg/apis/shorturl/v1beta1"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
+	utils "github.com/grafana/grafana/pkg/apimachinery/utils"
 )
 
 func New(cfg app.Config) (app.App, error) {
 	cfg.KubeConfig.APIPath = "apis"
+	var appBaseURL string
+	if specific, ok := cfg.SpecificConfig.(string); ok {
+		appBaseURL = specific
+	}
 	tmp, err := k8s.NewClientRegistry(cfg.KubeConfig, k8s.DefaultClientConfig()).
 		ClientFor(shorturlv1beta1.ShortURLKind())
 	if err != nil {
@@ -59,10 +63,6 @@ func New(cfg app.Config) (app.App, error) {
 						Method: "GET",
 						Path:   "goto",
 					}: func(ctx context.Context, w app.CustomRouteResponseWriter, req *app.CustomRouteRequest) error {
-						appURL, _, found := strings.Cut(req.URL.Path, "/apis/") // This will be settings.AppURL
-						if !found {
-							return fmt.Errorf("unable to parse request URL")
-						}
 						id := resource.Identifier{
 							Namespace: req.ResourceIdentifier.Namespace,
 							Name:      req.ResourceIdentifier.Name,
@@ -94,7 +94,7 @@ func New(cfg app.Config) (app.App, error) {
 							}
 						}()
 
-						redirectURL := appURL + "/" + info.Spec.Path
+						redirectURL := utils.JoinShortURLTarget(appBaseURL, info.Spec.Path)
 						if req.URL.Query().Get("redirect") == "false" { // helpful for testing
 							return json.NewEncoder(w).Encode(shorturlv1beta1.GetGotoResponse{
 								Url: redirectURL,

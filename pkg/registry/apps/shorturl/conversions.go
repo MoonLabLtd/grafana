@@ -2,7 +2,6 @@ package shorturl
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,6 +9,7 @@ import (
 
 	shorturl "github.com/grafana/grafana/apps/shorturl/pkg/apis/shorturl/v1beta1"
 	"github.com/grafana/grafana/pkg/api/dtos"
+	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	"github.com/grafana/grafana/pkg/services/shorturls"
 )
@@ -56,7 +56,7 @@ func LegacyCreateCommandToUnstructured(cmd dtos.CreateShortURLCmd) unstructured.
 }
 
 func UnstructuredToLegacyShortURLDTO(item unstructured.Unstructured, appURL string) *dtos.ShortURL {
-	url := fmt.Sprintf("%s/goto/%s?orgId=%s", strings.TrimSuffix(appURL, "/"), item.GetName(), item.GetNamespace())
+	url := fmt.Sprintf("%s/goto/%s?orgId=%s", utils.TrimTrailingSlash(appURL), item.GetName(), item.GetNamespace())
 
 	return &dtos.ShortURL{
 		UID: item.GetName(),
