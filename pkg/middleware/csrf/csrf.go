@@ -36,13 +36,12 @@ func ProvideCSRFFilter(cfg *setting.Cfg) *CSRF {
 	}
 
 	additionalHeaders := cfg.SectionWithEnvOverrides("security").Key("csrf_additional_headers").Strings(" ")
-	trustedOrigins := cfg.SectionWithEnvOverrides("security").Key("csrf_trusted_origins").Strings(" ")
 	c.alwaysCheck = cfg.SectionWithEnvOverrides("security").Key("csrf_always_check").MustBool(false)
 
 	for _, header := range additionalHeaders {
 		c.headers[header] = struct{}{}
 	}
-	for _, origin := range trustedOrigins {
+	for origin := range cfg.TrustedOrigins() {
 		c.trustedOrigins[origin] = struct{}{}
 	}
 

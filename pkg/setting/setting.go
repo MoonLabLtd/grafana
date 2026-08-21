@@ -141,11 +141,14 @@ type Cfg struct {
 	CertWatchInterval time.Duration
 	HTTPAddr          string
 	HTTPPort          string
-	Env               string
-	AppURL            string
-	AppSubURL         string
-	InstanceName      string
-	ServeFromSubPath  bool
+	Env                 string
+	AppURL              string
+	AppSubURL           string
+	InstanceName        string
+	ServeFromSubPath    bool
+	DynamicRootURLEnabled bool
+	trustedOrigins      map[string]struct{}
+
 	StaticRootPath    string
 	Protocol          Scheme
 	ServeOnSocket     bool
@@ -914,6 +917,72 @@ func (cfg *Cfg) parseAppUrlAndSubUrl(section *ini.Section) (string, string, erro
 
 	appSubUrl := strings.TrimSuffix(url.Path, "/")
 	return appUrl, appSubUrl, nil
+}
+
+// TrustedOrigins returns the parsed set of trusted origins from the
+// [security] csrf_trusted_origins setting. This is the single source of truth
+// for both CSRF validation and dynamic root URL authorization.
+func (cfg *Cfg) TrustedOrigins() map[string]struct{} {
+	return cfg.trustedOrigins
+}
+
+// IsTrustedOrigin reports whether the given host is present in the configured
+// csrf_trusted_origins whitelist. Matching is an exact string comparison on the
+// normalized host value, mirroring the CSRF middleware semantics.
+func (cfg *Cfg) IsTrustedOrigin(host string) bool {
+	if host == "" {
+		return false
+	}
+	_, ok := cfg.trustedOrigins[host]
+	return ok
+}
+
+// ResolveRootURL returns the dynamically resolved root URL when dynamic root URL
+// detection is enabled and the request host is trusted, otherwise it falls back to
+// the static AppURL. host is the raw value of the incoming *http.Request.Host and
+// may include a port, which is stripped before the trust check.
+func (cfg *Cfg) ResolveRootURL(host string) string {
+	if !cfg.DynamicRootURLEnabled || host == "" {
+		return cfg.AppURL
+	}
+
+	hostname := host
+	if addr, err := util.SplitHostPortDefault(host, "", "0"); err == nil && addr.Host != "" {
+		hostname = addr.Host
+	}
+
+	if hostname == "" || !cfg.IsTrustedOrigin(hostname) {
+		return cfg.AppURL
+	}
+
+	return cfg.buildDynamicRootURL(hostname)
+}
+
+// buildDynamicRootURL constructs a request-scoped root URL by replacing only the
+// scheme-and-host portion of the static root_url. The scheme and subpath are
+// preserved from the static configuration.
+func (cfg *Cfg) buildDynamicRootURL(host string) string {
+	staticURL, err := url.Parse(cfg.AppURL)
+	if err != nil {
+		return cfg.AppURL
+	}
+
+	scheme := staticURL.Scheme
+	if scheme == "" {
+		scheme = "http"
+	}
+
+	base := scheme + "://" + host
+	if cfg.AppSubURL != "" && cfg.AppSubURL != "/" {
+		base += "/" + strings.TrimPrefix(cfg.AppSubURL, "/")
+	}
+
+	// Match the trailing-slash behavior of the static root_url.
+	if strings.HasSuffix(cfg.AppURL, "/") && !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+
+	return base
 }
 
 func ToAbsUrl(relativeUrl string) string {
@@ -2037,6 +2106,11 @@ func readSecuritySettings(iniFile *ini.File, cfg *Cfg) error {
 	cfg.CSPReportOnlyTemplate = security.Key("content_security_policy_report_only_template").MustString("")
 	cfg.FormActionAdditionalHosts = security.Key("form_action_additional_hosts").Strings(" ")
 
+	cfg.trustedOrigins = map[string]struct{}{}
+	for _, origin := range security.Key("csrf_trusted_origins").Strings(" ") {
+		cfg.trustedOrigins[origin] = struct{}{}
+	}
+
 	enableFrontendSandboxForPlugins := security.Key("enable_frontend_sandbox_for_plugins").MustString("")
 	for _, plug := range strings.Split(enableFrontendSandboxForPlugins, ",") {
 		plug = strings.TrimSpace(plug)
@@ -2309,6 +2383,7 @@ func (cfg *Cfg) readServerSettings(iniFile *ini.File) error {
 	cfg.Protocol = HTTPScheme
 	cfg.ServeFromSubPath = server.Key("serve_from_sub_path").MustBool(false)
 	cfg.CertWatchInterval = server.Key("certs_watch_interval").MustDuration(0)
+	cfg.DynamicRootURLEnabled = server.Key("dynamic_root_url_enabled").MustBool(false)
 
 	protocolStr := valueAsString(server, "protocol", "http")
 
