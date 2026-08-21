@@ -22,7 +22,7 @@ func TestUserHeaderMiddleware(t *testing.T) {
 					IsAnonymous: true,
 					Login:       "anonymous"},
 				),
-				handlertest.WithMiddlewares(NewUserHeaderMiddleware()),
+				handlertest.WithMiddlewares(NewUserHeaderMiddleware(true)),
 			)
 
 			pluginCtx := backend.PluginContext{
@@ -96,7 +96,7 @@ func TestUserHeaderMiddleware(t *testing.T) {
 					IsAnonymous: true,
 					Login:       "anonymous"},
 				),
-				handlertest.WithMiddlewares(NewUserHeaderMiddleware()),
+				handlertest.WithMiddlewares(NewUserHeaderMiddleware(true)),
 			)
 
 			pluginCtx := backend.PluginContext{
@@ -174,7 +174,7 @@ func TestUserHeaderMiddleware(t *testing.T) {
 				WithReqContext(req, &user.SignedInUser{
 					Login: "admin",
 				}),
-				handlertest.WithMiddlewares(NewUserHeaderMiddleware()),
+				handlertest.WithMiddlewares(NewUserHeaderMiddleware(true)),
 			)
 
 			pluginCtx := backend.PluginContext{
@@ -253,7 +253,7 @@ func TestUserHeaderMiddleware(t *testing.T) {
 				WithReqContext(req, &user.SignedInUser{
 					Login: "admin",
 				}),
-				handlertest.WithMiddlewares(NewUserHeaderMiddleware()),
+				handlertest.WithMiddlewares(NewUserHeaderMiddleware(true)),
 			)
 
 			pluginCtx := backend.PluginContext{
@@ -325,6 +325,42 @@ func TestUserHeaderMiddleware(t *testing.T) {
 				require.Len(t, cdt.RunStreamReq.Headers, 1)
 				require.Equal(t, "admin", cdt.RunStreamReq.GetHTTPHeader(proxyutil.UserHeaderName))
 			})
+		})
+	})
+
+	t.Run("When forwardGrafanaAuthHeaders is disabled", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/some/thing", nil)
+		require.NoError(t, err)
+
+		cdt := handlertest.NewHandlerMiddlewareTest(t,
+			WithReqContext(req, &user.SignedInUser{
+				Login: "admin",
+			}),
+			handlertest.WithMiddlewares(NewUserHeaderMiddleware(false)),
+		)
+
+		pluginCtx := backend.PluginContext{
+			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{},
+		}
+
+		t.Run("Should not forward user header when calling QueryData", func(t *testing.T) {
+			_, err = cdt.MiddlewareHandler.QueryData(req.Context(), &backend.QueryDataRequest{
+				PluginContext: pluginCtx,
+				Headers:       map[string]string{},
+			})
+			require.NoError(t, err)
+			require.NotNil(t, cdt.QueryDataReq)
+			require.Empty(t, cdt.QueryDataReq.Headers)
+		})
+
+		t.Run("Should not forward user header when calling CallResource", func(t *testing.T) {
+			err = cdt.MiddlewareHandler.CallResource(req.Context(), &backend.CallResourceRequest{
+				PluginContext: pluginCtx,
+				Headers:       map[string][]string{},
+			}, nopCallResourceSender)
+			require.NoError(t, err)
+			require.NotNil(t, cdt.CallResourceReq)
+			require.Empty(t, cdt.CallResourceReq.Headers)
 		})
 	})
 }

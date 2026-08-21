@@ -175,7 +175,7 @@ func TestApplyUserHeader(t *testing.T) {
 		require.NoError(t, err)
 		req.Header.Set("X-Grafana-User", "admin")
 
-		ApplyUserHeader(false, req, &user.SignedInUser{Login: "admin", UserID: 1, FallbackType: claims.TypeUser})
+		ApplyUserHeader(true, false, req, &user.SignedInUser{Login: "admin", UserID: 1, FallbackType: claims.TypeUser})
 		require.NotContains(t, req.Header, "X-Grafana-User")
 	})
 
@@ -184,7 +184,7 @@ func TestApplyUserHeader(t *testing.T) {
 		require.NoError(t, err)
 		req.Header.Set("X-Grafana-User", "admin")
 
-		ApplyUserHeader(false, req, nil)
+		ApplyUserHeader(true, false, req, nil)
 		require.NotContains(t, req.Header, "X-Grafana-User")
 	})
 
@@ -192,7 +192,7 @@ func TestApplyUserHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 
-		ApplyUserHeader(true, req, &user.SignedInUser{IsAnonymous: true, FallbackType: claims.TypeAnonymous})
+		ApplyUserHeader(true, true, req, &user.SignedInUser{IsAnonymous: true, FallbackType: claims.TypeAnonymous})
 		require.NotContains(t, req.Header, "X-Grafana-User")
 	})
 
@@ -200,7 +200,36 @@ func TestApplyUserHeader(t *testing.T) {
 		req, err := http.NewRequest(http.MethodGet, "/", nil)
 		require.NoError(t, err)
 
-		ApplyUserHeader(true, req, &user.SignedInUser{Login: "admin", UserID: 1, FallbackType: claims.TypeUser})
+		ApplyUserHeader(true, true, req, &user.SignedInUser{Login: "admin", UserID: 1, FallbackType: claims.TypeUser})
 		require.Equal(t, "admin", req.Header.Get("X-Grafana-User"))
+	})
+}
+
+func TestApplyUserHeader_forwardGrafanaAuthHeadersDisabled(t *testing.T) {
+	admin := &user.SignedInUser{Login: "admin", UserID: 1, FallbackType: claims.TypeUser, IDToken: "id-token"}
+
+	t.Run("Should not apply user header when forwarding grafana auth headers is disabled", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+		req.Header.Set("X-Grafana-User", "admin")
+
+		ApplyUserHeader(false, true, req, admin)
+		require.NotContains(t, req.Header, "X-Grafana-User")
+	})
+
+	t.Run("Should not apply user header when master switch and send user header are both disabled", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyUserHeader(false, false, req, admin)
+		require.NotContains(t, req.Header, "X-Grafana-User")
+	})
+
+	t.Run("Should not apply forward id header when forward grafana auth headers is disabled", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		ApplyForwardIDHeader(false, req, admin)
+		require.NotContains(t, req.Header, "X-Grafana-Id")
 	})
 }

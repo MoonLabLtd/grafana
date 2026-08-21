@@ -201,12 +201,12 @@ func CreateMiddlewares(cfg *setting.Cfg, oAuthTokenService oauthtoken.OAuthToken
 		clientmiddleware.NewOAuthTokenMiddleware(oAuthTokenService),
 		clientmiddleware.NewCookiesMiddleware(skipCookiesNames),
 		clientmiddleware.NewCachingMiddleware(cachingServiceClient),
-		clientmiddleware.NewForwardIDMiddleware(),
+		clientmiddleware.NewForwardIDMiddleware(cfg.DataProxyForwardAuthHeaders),
 		clientmiddleware.NewUseAlertHeadersMiddleware(),
 	)
 
 	if cfg.SendUserHeader {
-		middlewares = append(middlewares, clientmiddleware.NewUserHeaderMiddleware())
+		middlewares = append(middlewares, clientmiddleware.NewUserHeaderMiddleware(cfg.DataProxyForwardAuthHeaders))
 	}
 
 	if cfg.IPRangeACEnabled {

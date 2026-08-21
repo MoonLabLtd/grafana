@@ -14,22 +14,28 @@ const forwardIDHeaderName = "X-Grafana-Id"
 
 // NewForwardIDMiddleware creates a new backend.HandlerMiddleware that will
 // set grafana id header on outgoing backend.Handler requests
-func NewForwardIDMiddleware() backend.HandlerMiddleware {
+func NewForwardIDMiddleware(forwardGrafanaAuthHeaders bool) backend.HandlerMiddleware {
 	return backend.HandlerMiddlewareFunc(func(next backend.Handler) backend.Handler {
 		return &ForwardIDMiddleware{
-			log:         log.New("forward_id_middleware"),
-			BaseHandler: backend.NewBaseHandler(next),
+			log:                       log.New("forward_id_middleware"),
+			forwardGrafanaAuthHeaders: forwardGrafanaAuthHeaders,
+			BaseHandler:               backend.NewBaseHandler(next),
 		}
 	})
 }
 
 type ForwardIDMiddleware struct {
-	log log.Logger
+	log                       log.Logger
+	forwardGrafanaAuthHeaders bool
 
 	backend.BaseHandler
 }
 
 func (m *ForwardIDMiddleware) applyToken(ctx context.Context, _ backend.PluginContext, req backend.ForwardHTTPHeaders) error {
+	if !m.forwardGrafanaAuthHeaders {
+		return nil
+	}
+
 	if req == nil {
 		return nil
 	}

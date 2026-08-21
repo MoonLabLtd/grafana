@@ -11,6 +11,7 @@ const defaultDataProxyRowLimit = int64(1000000)
 func readDataProxySettings(iniFile *ini.File, cfg *Cfg) error {
 	dataproxy := iniFile.Section("dataproxy")
 	cfg.SendUserHeader = dataproxy.Key("send_user_header").MustBool(false)
+	cfg.DataProxyForwardAuthHeaders = dataproxy.Key("forward_grafana_auth_headers").MustBool(true)
 	cfg.DataProxyLogging = dataproxy.Key("logging").MustBool(false)
 	cfg.DataProxyTimeout = dataproxy.Key("timeout").MustInt(30)
 	cfg.DataProxyDialTimeout = dataproxy.Key("dialTimeout").MustInt(10)

@@ -12,15 +12,18 @@ import (
 
 // NewUserHeaderMiddleware creates a new backend.HandlerMiddleware that will
 // populate the X-Grafana-User header on outgoing backend.Handler requests.
-func NewUserHeaderMiddleware() backend.HandlerMiddleware {
+func NewUserHeaderMiddleware(forwardGrafanaAuthHeaders bool) backend.HandlerMiddleware {
 	return backend.HandlerMiddlewareFunc(func(next backend.Handler) backend.Handler {
 		return &UserHeaderMiddleware{
-			BaseHandler: backend.NewBaseHandler(next),
+			forwardGrafanaAuthHeaders: forwardGrafanaAuthHeaders,
+			BaseHandler:               backend.NewBaseHandler(next),
 		}
 	})
 }
 
 type UserHeaderMiddleware struct {
+	forwardGrafanaAuthHeaders bool
+
 	backend.BaseHandler
 }
 
@@ -32,7 +35,7 @@ func (m *UserHeaderMiddleware) applyUserHeader(ctx context.Context, h backend.Fo
 	}
 
 	h.DeleteHTTPHeader(proxyutil.UserHeaderName)
-	if !reqCtx.IsIdentityType(claims.TypeAnonymous) {
+	if m.forwardGrafanaAuthHeaders && !reqCtx.IsIdentityType(claims.TypeAnonymous) {
 		h.SetHTTPHeader(proxyutil.UserHeaderName, reqCtx.GetLogin())
 	}
 }

@@ -615,7 +615,7 @@ func TestIntegrationDataSourceProxy_routeRule(t *testing.T) {
 					UserID:       1,
 				},
 			},
-			&DataSourceProxySettings{SendUserHeader: true},
+			&DataSourceProxySettings{SendUserHeader: true, ForwardGrafanaAuthHeaders: true},
 		)
 		assert.Equal(t, "test_user", req.Header.Get("X-Grafana-User"))
 	})
@@ -628,7 +628,7 @@ func TestIntegrationDataSourceProxy_routeRule(t *testing.T) {
 					Login: "test_user",
 				},
 			},
-			&DataSourceProxySettings{SendUserHeader: false},
+			&DataSourceProxySettings{SendUserHeader: false, ForwardGrafanaAuthHeaders: false},
 		)
 		// Get will return empty string even if header is not set
 		assert.Empty(t, req.Header.Get("X-Grafana-User"))
@@ -640,10 +640,28 @@ func TestIntegrationDataSourceProxy_routeRule(t *testing.T) {
 			&contextmodel.ReqContext{
 				SignedInUser: &user.SignedInUser{IsAnonymous: true},
 			},
-			&DataSourceProxySettings{SendUserHeader: true},
+			&DataSourceProxySettings{SendUserHeader: true, ForwardGrafanaAuthHeaders: true},
 		)
 		// Get will return empty string even if header is not set
 		assert.Empty(t, req.Header.Get("X-Grafana-User"))
+	})
+
+	t.Run("When ForwardGrafanaAuthHeaders config is disabled", func(t *testing.T) {
+		req := getDatasourceProxiedRequest(
+			t,
+			&contextmodel.ReqContext{
+				SignedInUser: &user.SignedInUser{
+					Login:        "test_user",
+					FallbackType: claims.TypeUser,
+					UserID:       1,
+					IDToken:      "id-token",
+				},
+			},
+			&DataSourceProxySettings{SendUserHeader: true, ForwardGrafanaAuthHeaders: false},
+		)
+		// Get will return empty string even if header is not set
+		assert.Empty(t, req.Header.Get("X-Grafana-User"))
+		assert.Empty(t, req.Header.Get("X-Grafana-Id"))
 	})
 
 	t.Run("When proxying data source proxy should handle authentication", func(t *testing.T) {
@@ -769,6 +787,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "Grafana/5.3.0",
 				DataProxyForwardUserAgent: false,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -788,6 +807,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "Grafana/5.3.0",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -807,6 +827,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "Grafana/5.3.0",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -826,6 +847,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "MyCorp/1.0",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -845,6 +867,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -864,6 +887,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "Grafana/5.3.0",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
@@ -885,6 +909,7 @@ func TestDataSourceProxy_userAgentHeader(t *testing.T) {
 			p.settings = &DataSourceProxySettings{
 				DataProxyUserAgent:        "Grafana/5.3.0",
 				DataProxyForwardUserAgent: true,
+				ForwardGrafanaAuthHeaders: true,
 			}
 		})
 		require.NoError(t, err)
