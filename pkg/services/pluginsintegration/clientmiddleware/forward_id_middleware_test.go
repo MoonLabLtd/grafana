@@ -18,7 +18,7 @@ import (
 
 func TestForwardIDMiddleware(t *testing.T) {
 	t.Run("When not signed in", func(t *testing.T) {
-		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 		ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 			Context: &web.Context{Req: &http.Request{}},
 		})
@@ -79,7 +79,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 	})
 
 	t.Run("When signed in", func(t *testing.T) {
-		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 		ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 			Context:      &web.Context{Req: &http.Request{}},
@@ -146,7 +146,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			}
 
 			t.Run("Should set forwarded id header to app plugin if present for QueryData", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -161,7 +161,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			})
 
 			t.Run("Should set forwarded id header to app plugin if present for CallResource", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -176,7 +176,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			})
 
 			t.Run("Should set forwarded id header to app plugin if present for CheckHealth", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -191,7 +191,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			})
 
 			t.Run("Should set forwarded id header to app plugin if present for SubscribeStream", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -206,7 +206,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			})
 
 			t.Run("Should set forwarded id header to app plugin if present for PublishStream", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -221,7 +221,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 			})
 
 			t.Run("Should set forwarded id header to app plugin if present for RunStream", func(t *testing.T) {
-				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+				cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 				ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
 					Context:      &web.Context{Req: &http.Request{}},
@@ -238,7 +238,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 	})
 
 	t.Run("When signed in with Requester in context", func(t *testing.T) {
-		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 		ctx := context.Background()
 		requester := &identity.StaticRequester{
@@ -302,7 +302,7 @@ func TestForwardIDMiddleware(t *testing.T) {
 	})
 
 	t.Run("When signed in with both Requester and SignedInUser", func(t *testing.T) {
-		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware()))
+		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(true)))
 
 		ctx := context.Background()
 		requester := &identity.StaticRequester{
@@ -325,5 +325,24 @@ func TestForwardIDMiddleware(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "signed-in-token", cdt.QueryDataReq.GetHTTPHeader(forwardIDHeaderName))
 		})
+	})
+
+	t.Run("When forwardGrafanaAuthHeaders is disabled", func(t *testing.T) {
+		cdt := handlertest.NewHandlerMiddlewareTest(t, handlertest.WithMiddlewares(NewForwardIDMiddleware(false)))
+
+		ctx := context.WithValue(context.Background(), ctxkey.Key{}, &contextmodel.ReqContext{
+			Context:      &web.Context{Req: &http.Request{}},
+			SignedInUser: &user.SignedInUser{IDToken: "some-token"},
+		})
+
+		pluginContext := backend.PluginContext{
+			DataSourceInstanceSettings: &backend.DataSourceInstanceSettings{},
+		}
+
+		_, err := cdt.MiddlewareHandler.QueryData(ctx, &backend.QueryDataRequest{
+			PluginContext: pluginContext,
+		})
+		require.NoError(t, err)
+		require.Empty(t, cdt.QueryDataReq.GetHTTPHeaders())
 	})
 }

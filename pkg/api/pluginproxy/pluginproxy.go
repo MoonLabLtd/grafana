@@ -23,43 +23,45 @@ import (
 )
 
 type PluginProxy struct {
-	accessControl    ac.AccessControl
-	ps               *pluginsettings.DTO
-	pluginRoutes     []*plugins.Route
-	req              *http.Request
-	resp             http.ResponseWriter
-	signedInUser     identity.Requester
-	proxyPath        string
-	matchedRoute     *plugins.Route
-	dataProxyLogging bool // from cfg
-	sendUserHeader   bool // from cfg
-	secureJsonData   pluginsettings.DecryptedSecureJSONLoader
-	tracer           tracing.Tracer
-	transport        *http.Transport
-	features         featuremgmt.FeatureToggles
+	accessControl             ac.AccessControl
+	ps                        *pluginsettings.DTO
+	pluginRoutes              []*plugins.Route
+	req                       *http.Request
+	resp                      http.ResponseWriter
+	signedInUser              identity.Requester
+	proxyPath                 string
+	matchedRoute              *plugins.Route
+	dataProxyLogging          bool // from cfg
+	sendUserHeader            bool // from cfg
+	forwardGrafanaAuthHeaders bool
+	secureJsonData            pluginsettings.DecryptedSecureJSONLoader
+	tracer                    tracing.Tracer
+	transport                 *http.Transport
+	features                  featuremgmt.FeatureToggles
 }
 
 // NewPluginProxy creates a plugin proxy.
 func NewPluginProxy(ps *pluginsettings.DTO, routes []*plugins.Route,
 	r *http.Request, w http.ResponseWriter, signedInUser identity.Requester,
 	proxyPath string,
-	dataProxyLogging bool, sendUserHeader bool,
+	dataProxyLogging bool, sendUserHeader bool, forwardGrafanaAuthHeaders bool,
 	secureJsonData pluginsettings.DecryptedSecureJSONLoader, tracer tracing.Tracer,
 	transport *http.Transport, accessControl ac.AccessControl, features featuremgmt.FeatureToggles) (*PluginProxy, error) {
 	return &PluginProxy{
-		accessControl:    accessControl,
-		ps:               ps,
-		pluginRoutes:     routes,
-		req:              r,
-		resp:             w,
-		signedInUser:     signedInUser,
-		proxyPath:        proxyPath,
-		dataProxyLogging: dataProxyLogging,
-		sendUserHeader:   sendUserHeader,
-		secureJsonData:   secureJsonData,
-		tracer:           tracer,
-		transport:        transport,
-		features:         features,
+		accessControl:             accessControl,
+		ps:                        ps,
+		pluginRoutes:              routes,
+		req:                       r,
+		resp:                      w,
+		signedInUser:              signedInUser,
+		proxyPath:                 proxyPath,
+		dataProxyLogging:          dataProxyLogging,
+		sendUserHeader:            sendUserHeader,
+		forwardGrafanaAuthHeaders: forwardGrafanaAuthHeaders,
+		secureJsonData:            secureJsonData,
+		tracer:                    tracer,
+		transport:                 transport,
+		features:                  features,
 	}, nil
 }
 
@@ -194,10 +196,12 @@ func (proxy PluginProxy) director(req *http.Request) {
 		return
 	}
 
-	req.Header.Set("X-Grafana-Context", string(ctxJSON))
+	if proxy.forwardGrafanaAuthHeaders {
+		req.Header.Set("X-Grafana-Context", string(ctxJSON))
+	}
 
-	proxyutil.ApplyUserHeader(proxy.sendUserHeader, req, proxy.signedInUser)
-	proxyutil.ApplyForwardIDHeader(req, proxy.signedInUser)
+	proxyutil.ApplyUserHeader(proxy.forwardGrafanaAuthHeaders, proxy.sendUserHeader, req, proxy.signedInUser)
+	proxyutil.ApplyForwardIDHeader(proxy.forwardGrafanaAuthHeaders, req, proxy.signedInUser)
 
 	if err := addHeaders(&req.Header, proxy.matchedRoute, data); err != nil {
 		writeJSONErr(proxy.resp, proxy.req, 500, "Failed to render plugin headers", err)

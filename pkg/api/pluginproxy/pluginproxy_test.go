@@ -49,7 +49,7 @@ func TestPluginProxy(t *testing.T) {
 			&user.SignedInUser{
 				Login: "test_user",
 			},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			route,
 		)
 
@@ -70,7 +70,7 @@ func TestPluginProxy(t *testing.T) {
 				FallbackType: claims.TypeUser,
 				UserID:       1,
 			},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			nil,
 		)
 
@@ -107,12 +107,36 @@ func TestPluginProxy(t *testing.T) {
 			nil,
 			httpReq,
 			&user.SignedInUser{IsAnonymous: true},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			nil,
 		)
 
 		// Get will return empty string even if header is not set
 		assert.Equal(t, "", req.Header.Get("X-Grafana-User"))
+	})
+
+	t.Run("When forwardGrafanaAuthHeaders config is disabled", func(t *testing.T) {
+		httpReq, err := http.NewRequest(http.MethodGet, "", nil)
+		require.NoError(t, err)
+
+		req := getPluginProxiedRequest(
+			t,
+			&pluginsettings.DTO{},
+			nil,
+			httpReq,
+			&user.SignedInUser{
+				Login:        "test_user",
+				FallbackType: claims.TypeUser,
+				UserID:       1,
+				IDToken:      "id-token",
+			},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: false},
+			nil,
+		)
+
+		// Get will return empty string even if header is not set
+		assert.Equal(t, "", req.Header.Get("X-Grafana-User"))
+		assert.Equal(t, "", req.Header.Get("X-Grafana-Id"))
 	})
 
 	t.Run("When getting templated url", func(t *testing.T) {
@@ -136,7 +160,7 @@ func TestPluginProxy(t *testing.T) {
 			&user.SignedInUser{
 				Login: "test_user",
 			},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			route,
 		)
 		assert.Equal(t, "https://dynamic.grafana.com", req.URL.String())
@@ -160,7 +184,7 @@ func TestPluginProxy(t *testing.T) {
 			&user.SignedInUser{
 				Login: "test_user",
 			},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			route,
 		)
 		assert.Equal(t, "https://example.com", req.URL.String())
@@ -188,7 +212,7 @@ func TestPluginProxy(t *testing.T) {
 			&user.SignedInUser{
 				Login: "test_user",
 			},
-			&setting.Cfg{SendUserHeader: true},
+			&setting.Cfg{SendUserHeader: true, DataProxyForwardAuthHeaders: true},
 			route,
 		)
 		content, err := io.ReadAll(req.Body)
@@ -218,7 +242,7 @@ func TestPluginProxy(t *testing.T) {
 		ps := &pluginsettings.DTO{
 			SecureJSONData: map[string][]byte{},
 		}
-		proxy, err := NewPluginProxy(ps, routes, req, responseWriter, &user.SignedInUser{}, "", false, false, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures())
+		proxy, err := NewPluginProxy(ps, routes, req, responseWriter, &user.SignedInUser{}, "", false, false, true, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures())
 		require.NoError(t, err)
 		proxy.HandleRequest()
 
@@ -365,7 +389,7 @@ func TestPluginProxyRoutes(t *testing.T) {
 			ps := &pluginsettings.DTO{
 				SecureJSONData: map[string][]byte{},
 			}
-			proxy, err := NewPluginProxy(ps, testRoutes, req, responseWriter, &user.SignedInUser{}, tc.proxyPath, false, false, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures(tc.withFeatures...))
+			proxy, err := NewPluginProxy(ps, testRoutes, req, responseWriter, &user.SignedInUser{}, tc.proxyPath, false, false, true, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures(tc.withFeatures...))
 			require.NoError(t, err)
 			proxy.HandleRequest()
 
@@ -488,7 +512,7 @@ func TestPluginProxyRoutesAccessControl(t *testing.T) {
 				PluginID:       "test-app",
 				SecureJSONData: map[string][]byte{},
 			}
-			proxy, err := NewPluginProxy(ps, testRoutes, req, responseWriter, signedInUser, tc.proxyPath, false, false, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures())
+			proxy, err := NewPluginProxy(ps, testRoutes, req, responseWriter, signedInUser, tc.proxyPath, false, false, true, nil, tracing.InitializeTracerForTest(), &http.Transport{}, acimpl.ProvideAccessControl(featuremgmt.WithFeatures()), featuremgmt.WithFeatures())
 			require.NoError(t, err)
 			proxy.HandleRequest()
 
@@ -518,7 +542,7 @@ func getPluginProxiedRequest(t *testing.T, ps *pluginsettings.DTO, secureJsonDat
 		}
 	}
 	proxy, err := NewPluginProxy(ps, []*plugins.Route{}, r, httptest.NewRecorder(), signedInUser, "",
-		cfg.DataProxyLogging, cfg.SendUserHeader,
+		cfg.DataProxyLogging, cfg.SendUserHeader, cfg.DataProxyForwardAuthHeaders,
 		func(context.Context) (map[string]string, error) {
 			return secureJsonData, nil
 		},

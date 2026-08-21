@@ -262,7 +262,7 @@ func (proxy *DataSourceProxy) director(req *http.Request) {
 		req.Header.Set("Authorization", dsAuth)
 	}
 
-	proxyutil.ApplyUserHeader(proxy.settings.SendUserHeader, req, proxy.requester)
+	proxyutil.ApplyUserHeader(proxy.settings.ForwardGrafanaAuthHeaders, proxy.settings.SendUserHeader, req, proxy.requester)
 
 	proxyutil.ClearCookieHeader(req, ds.Spec.KeepCookies(), []string{proxy.settings.LoginCookieName})
 	ua := proxy.settings.DataProxyUserAgent
@@ -301,7 +301,7 @@ func (proxy *DataSourceProxy) director(req *http.Request) {
 		}
 	}
 
-	proxyutil.ApplyForwardIDHeader(req, proxy.requester)
+	proxyutil.ApplyForwardIDHeader(proxy.settings.ForwardGrafanaAuthHeaders, req, proxy.requester)
 }
 
 // dsInfo builds the DSInfo that ApplyRoute needs from a v0 datasource.

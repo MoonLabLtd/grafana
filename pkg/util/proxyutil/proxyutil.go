@@ -103,10 +103,10 @@ func SetViaHeader(header http.Header, major, minor int) {
 }
 
 // ApplyUserHeader Set the X-Grafana-User header if needed (and remove if not).
-func ApplyUserHeader(sendUserHeader bool, req *http.Request, user identity.Requester) {
+func ApplyUserHeader(forwardGrafanaAuthHeaders, sendUserHeader bool, req *http.Request, user identity.Requester) {
 	req.Header.Del(UserHeaderName)
 
-	if !sendUserHeader || user == nil || user.IsNil() {
+	if !forwardGrafanaAuthHeaders || !sendUserHeader || user == nil || user.IsNil() {
 		return
 	}
 
@@ -115,7 +115,10 @@ func ApplyUserHeader(sendUserHeader bool, req *http.Request, user identity.Reque
 	}
 }
 
-func ApplyForwardIDHeader(req *http.Request, user identity.Requester) {
+func ApplyForwardIDHeader(forwardGrafanaAuthHeaders bool, req *http.Request, user identity.Requester) {
+	if !forwardGrafanaAuthHeaders {
+		return
+	}
 	if user == nil || user.IsNil() {
 		return
 	}

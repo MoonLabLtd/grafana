@@ -52,9 +52,10 @@ type PluginContextWrapper interface {
 type AppPluginRunnerOptions struct {
 	RegisterProxy bool
 
-	DataProxyLogging         bool // from cfg
-	SendUserHeader           bool // from cfg
-	PluginsAppsSkipVerifyTLS bool // from cfg
+	DataProxyLogging          bool // from cfg
+	SendUserHeader            bool // from cfg
+	ForwardGrafanaAuthHeaders bool // from cfg
+	PluginsAppsSkipVerifyTLS  bool // from cfg
 
 	// When this exists, dual write settings will be used
 	LegacyStore grafanarest.Storage
@@ -160,9 +161,10 @@ func RegisterAPIService(
 				LegacyStore:   NewLegacySettingsStore(plugin.JSONData.ID, pluginSettings),
 				AccessControl: accessControl,
 
-				DataProxyLogging:         cfg.DataProxyLogging,
-				SendUserHeader:           cfg.SendUserHeader,
-				PluginsAppsSkipVerifyTLS: cfg.PluginsAppsSkipVerifyTLS,
+				DataProxyLogging:          cfg.DataProxyLogging,
+				SendUserHeader:            cfg.SendUserHeader,
+				ForwardGrafanaAuthHeaders: cfg.DataProxyForwardAuthHeaders,
+				PluginsAppsSkipVerifyTLS:  cfg.PluginsAppsSkipVerifyTLS,
 			},
 			tracer,
 			features,

@@ -36,20 +36,22 @@ type subProxyREST struct {
 	features             featuremgmt.FeatureToggles
 	pluginProxyTransport *http.Transport
 
-	DataProxyLogging bool // from cfg
-	SendUserHeader   bool // from cfg
+	DataProxyLogging          bool // from cfg
+	SendUserHeader            bool // from cfg
+	forwardGrafanaAuthHeaders bool // from cfg
 }
 
 func newProxy(b *AppPluginAPIBuilder) *subProxyREST {
 	return &subProxyREST{
-		pluginID:         b.pluginJSON.ID,
-		routes:           b.pluginJSON.Routes,
-		settingsProvider: b.getSettings,
-		accessControl:    b.opts.AccessControl,
-		DataProxyLogging: b.opts.DataProxyLogging,
-		SendUserHeader:   b.opts.SendUserHeader,
-		tracer:           b.tracer,
-		features:         b.features,
+		pluginID:                  b.pluginJSON.ID,
+		routes:                    b.pluginJSON.Routes,
+		settingsProvider:          b.getSettings,
+		accessControl:             b.opts.AccessControl,
+		DataProxyLogging:          b.opts.DataProxyLogging,
+		SendUserHeader:            b.opts.SendUserHeader,
+		forwardGrafanaAuthHeaders: b.opts.ForwardGrafanaAuthHeaders,
+		tracer:                    b.tracer,
+		features:                  b.features,
 
 		pluginProxyTransport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -129,7 +131,7 @@ func (r *subProxyREST) Connect(ctx context.Context, name string, opts runtime.Ob
 
 		p, err := pluginproxy.NewPluginProxy(ps, r.routes,
 			proxyReq, w, user,
-			proxyPath, r.DataProxyLogging, r.SendUserHeader,
+			proxyPath, r.DataProxyLogging, r.SendUserHeader, r.forwardGrafanaAuthHeaders,
 			secure, r.tracer, r.pluginProxyTransport, r.accessControl, r.features)
 		if err != nil {
 			responder.Error(fmt.Errorf("failed to create plugin proxy: %w", err))
