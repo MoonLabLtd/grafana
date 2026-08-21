@@ -196,6 +196,24 @@ func (_m *MockSocialConnector) TokenSource(ctx context.Context, t *oauth2.Token)
 	return r0
 }
 
+// GetDynamicRedirectURL provides a mock function with given fields: r
+func (_m *MockSocialConnector) GetDynamicRedirectURL(r *http.Request) string {
+	ret := _m.Called(r)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetDynamicRedirectURL")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(*http.Request) string); ok {
+		r0 = rf(r)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
 // UserInfo provides a mock function with given fields: ctx, client, token
 func (_m *MockSocialConnector) UserInfo(ctx context.Context, client *http.Client, token *oauth2.Token) (*social.BasicUserInfo, error) {
 	ret := _m.Called(ctx, client, token)

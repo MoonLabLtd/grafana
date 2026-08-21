@@ -185,15 +185,15 @@ describe('ExtensionSidebarProvider', () => {
     expect(store.delete).toHaveBeenCalledWith(EXTENSION_SIDEBAR_DOCKED_LOCAL_STORAGE_KEY);
   });
 
-  it('should only include permitted plugins in available components', () => {
-    const permittedPluginMeta = {
+  it('should include all plugins with registered components in available components', () => {
+    const pluginMeta1 = {
       pluginId: 'grafana-assistant-app',
       addedComponents: [mockComponent],
       addedLinks: [],
     };
 
-    const prohibitedPluginMeta = {
-      pluginId: 'disabled-plugin',
+    const pluginMeta2 = {
+      pluginId: 'custom-plugin-app',
       addedComponents: [mockComponent],
       addedLinks: [],
     };
@@ -201,8 +201,8 @@ describe('ExtensionSidebarProvider', () => {
     useAsyncMock.mockReturnValue({
       loading: false,
       value: new Map([
-        [permittedPluginMeta.pluginId, permittedPluginMeta],
-        [prohibitedPluginMeta.pluginId, prohibitedPluginMeta],
+        [pluginMeta1.pluginId, pluginMeta1],
+        [pluginMeta2.pluginId, pluginMeta2],
       ]),
     });
 
@@ -212,9 +212,8 @@ describe('ExtensionSidebarProvider', () => {
       </ExtensionSidebarContextProvider>
     );
 
-    // Should only include the enabled plugin
-    expect(screen.getByTestId('available-components-size')).toHaveTextContent('1');
-    expect(screen.getByTestId('plugin-ids')).toHaveTextContent(permittedPluginMeta.pluginId);
+    // Should include both plugins
+    expect(screen.getByTestId('available-components-size')).toHaveTextContent('2');
   });
 
   it('should subscribe to OpenExtensionSidebarEvent and CloseExtensionSidebarEvent when feature is enabled', async () => {
@@ -273,7 +272,7 @@ describe('ExtensionSidebarProvider', () => {
     expect(screen.getByTestId('docked-component-id')).toHaveTextContent(expectedComponentId);
   });
 
-  it('should not open sidebar when receiving an OpenExtensionSidebarEvent with non-permitted plugin', () => {
+  it('should not open sidebar when receiving an OpenExtensionSidebarEvent with plugin not in available components', () => {
     render(
       <ExtensionSidebarContextProvider>
         <TestComponent />
@@ -286,10 +285,10 @@ describe('ExtensionSidebarProvider', () => {
       // Get the event subscriber function
       const [[, subscriberFn]] = subscribeSpy.mock.calls;
 
-      // Call it directly with the test event for a non-permitted plugin
+      // Call it directly with the test event for a plugin not in available components
       subscriberFn(
         new OpenExtensionSidebarEvent({
-          pluginId: 'non-permitted-plugin',
+          pluginId: 'non-registered-plugin',
           componentTitle: 'Test Component',
         })
       );

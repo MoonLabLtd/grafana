@@ -286,8 +286,31 @@ func (c *OAuth) RedirectURL(ctx context.Context, r *authn.Request) (*authn.Redir
 		return nil, errOAuthInternal.Errorf("failed to get %s oauth connector: %w", c.name, err)
 	}
 
+	// Check if we should use dynamic redirect URL
+	var authURL string
+	if c.features != nil {
+		//nolint:staticcheck // not yet migrated to OpenFeature
+		if c.features.IsEnabledGlobally(featuremgmt.FlagAutoDetectRootUrl) && r != nil && r.HTTPRequest != nil {
+			// Use dynamic redirect URL based on request
+			redirectURL := connector.GetDynamicRedirectURL(r.HTTPRequest)
+			// Create a temporary config with the dynamic redirect URL
+			tempConfig := &oauth2.Config{
+				ClientID:     connector.(*connectors.SocialBase).ClientID,
+				ClientSecret: connector.(*connectors.SocialBase).ClientSecret,
+				Endpoint:     connector.(*connectors.SocialBase).Endpoint,
+				RedirectURL:  redirectURL,
+				Scopes:       connector.(*connectors.SocialBase).Scopes,
+			}
+			authURL = tempConfig.AuthCodeURL(state, opts...)
+		} else {
+			authURL = connector.AuthCodeURL(state, opts...)
+		}
+	} else {
+		authURL = connector.AuthCodeURL(state, opts...)
+	}
+
 	return &authn.Redirect{
-		URL: connector.AuthCodeURL(state, opts...),
+		URL: authURL,
 		Extra: map[string]string{
 			authn.KeyOAuthState: hashedSate,
 			authn.KeyOAuthPKCE:  plainPKCE,

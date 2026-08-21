@@ -58,6 +58,9 @@ type SocialConnector interface {
 	Client(ctx context.Context, t *oauth2.Token) *http.Client
 	TokenSource(ctx context.Context, t *oauth2.Token) oauth2.TokenSource
 	SupportBundleContent(*bytes.Buffer) error
+	// GetDynamicRedirectURL returns the OAuth redirect URL, potentially using a dynamically
+	// detected root URL if the feature is enabled.
+	GetDynamicRedirectURL(r *http.Request) string
 }
 
 type OAuthInfo struct {

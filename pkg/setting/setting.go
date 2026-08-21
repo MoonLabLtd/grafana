@@ -266,6 +266,7 @@ type Cfg struct {
 	GravatarURL                     string
 	DataProxyWhiteList              map[string]bool
 	ActionsAllowPostURL             string
+	AutoDetectRootURLTrustedOrigins []string
 
 	// K8s Dashboard Cleanup
 	K8sDashboardCleanup K8sDashboardCleanupSettings
@@ -376,6 +377,7 @@ type Cfg struct {
 
 	// Dataproxy
 	SendUserHeader                 bool
+	ForwardIDHeader                bool
 	DataProxyLogging               bool
 	DataProxyTimeout               int
 	DataProxyDialTimeout           int
@@ -2058,6 +2060,8 @@ func readSecuritySettings(iniFile *ini.File, cfg *Cfg) error {
 	for _, hostAndIP := range util.SplitString(securityStr) {
 		cfg.DataProxyWhiteList[hostAndIP] = true
 	}
+
+	cfg.AutoDetectRootURLTrustedOrigins = security.Key("auto_detect_root_url_trusted_origins").Strings(" ")
 
 	// admin
 	cfg.DisableInitAdminCreation = security.Key("disable_initial_admin_creation").MustBool(false)

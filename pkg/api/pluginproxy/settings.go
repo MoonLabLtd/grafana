@@ -10,6 +10,7 @@ import (
 
 type DataSourceProxySettings struct {
 	SendUserHeader            bool
+	ForwardIDHeader             bool
 	DataProxyUserAgent        string
 	DataProxyForwardUserAgent bool
 	LoginCookieName           string
@@ -23,6 +24,7 @@ type DataSourceProxySettings struct {
 func NewDataSourceProxySettings(cfg *setting.Cfg) *DataSourceProxySettings {
 	return &DataSourceProxySettings{
 		SendUserHeader:            cfg.SendUserHeader,
+		ForwardIDHeader:             cfg.ForwardIDHeader,
 		DataProxyUserAgent:        cfg.DataProxyUserAgent,
 		DataProxyForwardUserAgent: cfg.DataProxyForwardUserAgent,
 		LoginCookieName:           cfg.LoginCookieName,

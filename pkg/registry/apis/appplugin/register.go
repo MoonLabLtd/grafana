@@ -54,6 +54,7 @@ type AppPluginRunnerOptions struct {
 
 	DataProxyLogging         bool // from cfg
 	SendUserHeader           bool // from cfg
+	ForwardIDHeader            bool // from cfg
 	PluginsAppsSkipVerifyTLS bool // from cfg
 
 	// When this exists, dual write settings will be used
@@ -162,6 +163,7 @@ func RegisterAPIService(
 
 				DataProxyLogging:         cfg.DataProxyLogging,
 				SendUserHeader:           cfg.SendUserHeader,
+				ForwardIDHeader:           cfg.ForwardIDHeader,
 				PluginsAppsSkipVerifyTLS: cfg.PluginsAppsSkipVerifyTLS,
 			},
 			tracer,
