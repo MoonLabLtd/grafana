@@ -124,3 +124,26 @@ func TestUnstructuredToLegacyShortURL(t *testing.T) {
 		})
 	}
 }
+
+func TestUnstructuredToLegacyShortURLDTO(t *testing.T) {
+	item := unstructured.Unstructured{Object: map[string]interface{}{
+		"metadata": map[string]interface{}{"name": "abc123", "namespace": "10"},
+		"spec":     map[string]interface{}{"path": "d/foo/bar"},
+	}}
+
+	tests := []struct {
+		name   string
+		appURL string
+		expect string
+	}{
+		{name: "with subpath", appURL: "http://localhost:3000/grafana/", expect: "http://localhost:3000/grafana/goto/abc123?orgId=10"},
+		{name: "without trailing slash", appURL: "http://localhost:3000/grafana", expect: "http://localhost:3000/grafana/goto/abc123?orgId=10"},
+		{name: "no subpath", appURL: "http://localhost:3000/", expect: "http://localhost:3000/goto/abc123?orgId=10"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expect, UnstructuredToLegacyShortURLDTO(item, tc.appURL).URL)
+		})
+	}
+}

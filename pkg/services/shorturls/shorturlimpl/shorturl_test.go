@@ -263,3 +263,24 @@ func TestIntegrationShortURLService(t *testing.T) {
 		require.ErrorIs(t, err, shorturls.ErrShortURLBadRequest)
 	})
 }
+
+func TestConvertShortURLToDTO(t *testing.T) {
+	service := &ShortURLService{}
+	shortURL := &shorturls.ShortUrl{Uid: "abc123", OrgId: 10}
+
+	tests := []struct {
+		name   string
+		appURL string
+		expect string
+	}{
+		{name: "with subpath", appURL: "http://localhost:3000/grafana/", expect: "http://localhost:3000/grafana/goto/abc123?orgId=10"},
+		{name: "without trailing slash", appURL: "http://localhost:3000/grafana", expect: "http://localhost:3000/grafana/goto/abc123?orgId=10"},
+		{name: "no subpath", appURL: "http://localhost:3000/", expect: "http://localhost:3000/goto/abc123?orgId=10"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expect, service.ConvertShortURLToDTO(shortURL, tc.appURL).URL)
+		})
+	}
+}

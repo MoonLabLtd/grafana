@@ -42,7 +42,7 @@ func RegisterAppInstaller(
 		service:    service,
 		namespacer: request.GetNamespaceMapper(cfg),
 	}
-	provider := simple.NewAppProvider(apis.LocalManifest(), nil, shorturlapp.New)
+	provider := simple.NewAppProvider(apis.LocalManifest(), cfg.AppURL, shorturlapp.New)
 
 	appCfg := app.Config{
 		KubeConfig:   restclient.Config{}, // this will be overridden by the installer's InitializeApp method

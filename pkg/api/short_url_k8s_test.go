@@ -41,6 +41,22 @@ func TestGetKubernetesRedirectFromShortURL(t *testing.T) {
 			wantLocation: appURL + "explore",
 		},
 		{
+			name:         "subpath-prefixed goto URL is preserved in Location",
+			uid:          validUID,
+			statusCode:   http.StatusOK,
+			responseBody: mustMarshal(t, v1beta1.GetGotoResponse{Url: "/grafana/d/abcdef1234/my-dashboard?orgId=1"}),
+			wantStatus:   http.StatusFound,
+			wantLocation: "/grafana/d/abcdef1234/my-dashboard?orgId=1",
+		},
+		{
+			name:         "no-subpath goto URL is preserved in Location",
+			uid:          validUID,
+			statusCode:   http.StatusOK,
+			responseBody: mustMarshal(t, v1beta1.GetGotoResponse{Url: "/d/abcdef1234/my-dashboard?orgId=1"}),
+			wantStatus:   http.StatusFound,
+			wantLocation: "/d/abcdef1234/my-dashboard?orgId=1",
+		},
+		{
 			name:       "ShortURL resource not found redirects to AppURL with 308",
 			uid:        validUID,
 			statusCode: http.StatusNotFound,
