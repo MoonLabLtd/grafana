@@ -174,6 +174,90 @@ func TestRequestConfigMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, recorder.Code)
 	})
 
+	t.Run("propagates dynamically resolved AppURL when host is trusted", func(t *testing.T) {
+		license := &licensing.OSSLicensingService{}
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://internal.example/grafana/\ndynamic_root_url_enabled = true\n\n[security]\ncsrf_trusted_origins = internal.example public.example\n"))
+		require.NoError(t, err)
+
+		middleware := RequestConfigMiddleware(cfg, license, nil, nil)
+
+		var capturedConfig FSRequestConfig
+		testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var err error
+			capturedConfig, err = FSRequestConfigFromContext(r.Context())
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		handler := middleware(testHandler)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "public.example"
+		req = setupTestContext(req, "")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, req)
+
+		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.Equal(t, "https://public.example/grafana/", capturedConfig.AppURL)
+	})
+
+	t.Run("falls back to static AppURL when host is not trusted", func(t *testing.T) {
+		license := &licensing.OSSLicensingService{}
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://internal.example/grafana/\ndynamic_root_url_enabled = true\n\n[security]\ncsrf_trusted_origins = internal.example public.example\n"))
+		require.NoError(t, err)
+
+		middleware := RequestConfigMiddleware(cfg, license, nil, nil)
+
+		var capturedConfig FSRequestConfig
+		testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var err error
+			capturedConfig, err = FSRequestConfigFromContext(r.Context())
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		handler := middleware(testHandler)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "untrusted.example"
+		req = setupTestContext(req, "")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, req)
+
+		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.Equal(t, "https://internal.example/grafana/", capturedConfig.AppURL)
+	})
+
+	t.Run("keeps static AppURL when dynamic root url disabled", func(t *testing.T) {
+		license := &licensing.OSSLicensingService{}
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://internal.example/grafana/\n\n[security]\ncsrf_trusted_origins = internal.example public.example\n"))
+		require.NoError(t, err)
+
+		middleware := RequestConfigMiddleware(cfg, license, nil, nil)
+
+		var capturedConfig FSRequestConfig
+		testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var err error
+			capturedConfig, err = FSRequestConfigFromContext(r.Context())
+			require.NoError(t, err)
+			w.WriteHeader(http.StatusOK)
+		})
+
+		handler := middleware(testHandler)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "public.example"
+		req = setupTestContext(req, "")
+		recorder := httptest.NewRecorder()
+
+		handler.ServeHTTP(recorder, req)
+
+		assert.Equal(t, http.StatusOK, recorder.Code)
+		assert.Equal(t, "https://internal.example/grafana/", capturedConfig.AppURL)
+	})
+
 	t.Run("should fetch and apply tenant overrides from settings service", func(t *testing.T) {
 		// Create mock settings service that returns CSP overrides
 		mockSettingsService := &mockSettingsService{

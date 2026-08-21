@@ -216,7 +216,7 @@ func TestNewFSRequestConfig(t *testing.T) {
 		cfg := newCfg()
 		license := &licensing.OSSLicensingService{Cfg: cfg}
 
-		config, err := NewFSRequestConfig(context.Background(), cfg, license, newPluginsCDN(), false)
+		config, err := NewFSRequestConfig(context.Background(), cfg, license, newPluginsCDN(), false, nil)
 		require.NoError(t, err)
 
 		assert.Nil(t, config.FullFrontendSettings)
@@ -235,12 +235,54 @@ func TestNewFSRequestConfig(t *testing.T) {
 		}
 		ctx := ctxkey.Set(context.Background(), reqCtx)
 
-		config, err := NewFSRequestConfig(ctx, cfg, license, newPluginsCDN(), true)
+		config, err := NewFSRequestConfig(ctx, cfg, license, newPluginsCDN(), true, nil)
 		require.NoError(t, err)
 
 		require.NotNil(t, config.FullFrontendSettings)
 		assert.Equal(t, "https://grafana.example.com", config.FullFrontendSettings.AppUrl)
 		// The plugins CDN base URL is sourced from the plugins CDN service.
 		assert.Equal(t, "https://cdn.example.com", config.FullFrontendSettings.PluginsCDNBaseURL)
+	})
+
+	t.Run("resolves AppURL from request host when dynamic root url enabled", func(t *testing.T) {
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://grafana.example.com/grafana/\ndynamic_root_url_enabled = true\n\n[security]\ncsrf_trusted_origins = public.example\n"))
+		require.NoError(t, err)
+		license := &licensing.OSSLicensingService{Cfg: cfg}
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "public.example"
+
+		config, err := NewFSRequestConfig(context.Background(), cfg, license, newPluginsCDN(), false, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "https://public.example/grafana/", config.AppURL)
+	})
+
+	t.Run("uses static AppURL for untrusted request host", func(t *testing.T) {
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://grafana.example.com/grafana/\ndynamic_root_url_enabled = true\n\n[security]\ncsrf_trusted_origins = public.example\n"))
+		require.NoError(t, err)
+		license := &licensing.OSSLicensingService{Cfg: cfg}
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "untrusted.example"
+
+		config, err := NewFSRequestConfig(context.Background(), cfg, license, newPluginsCDN(), false, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "https://grafana.example.com/grafana/", config.AppURL)
+	})
+
+	t.Run("uses static AppURL when dynamic root url disabled", func(t *testing.T) {
+		cfg, err := setting.NewCfgFromBytes([]byte("[server]\nroot_url = https://grafana.example.com/grafana/\n\n[security]\ncsrf_trusted_origins = public.example\n"))
+		require.NoError(t, err)
+		license := &licensing.OSSLicensingService{Cfg: cfg}
+
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Host = "public.example"
+
+		config, err := NewFSRequestConfig(context.Background(), cfg, license, newPluginsCDN(), false, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "https://grafana.example.com/grafana/", config.AppURL)
 	})
 }

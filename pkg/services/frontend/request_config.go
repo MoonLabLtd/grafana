@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"gopkg.in/ini.v1"
@@ -37,8 +38,10 @@ type FSRequestConfig struct {
 }
 
 // NewFSRequestConfig creates a new FSRequestConfig from the global configuration.
-// This is used to create the base configuration at service startup.
-func NewFSRequestConfig(ctx context.Context, cfg *setting.Cfg, license licensing.Licensing, pluginsCDN *pluginscdn.Service, fullFrontendSettingsEnabled bool) (FSRequestConfig, error) {
+// When httpReq is non-nil and dynamic root URL detection is enabled, AppURL is
+// resolved from the request Host header against csrf_trusted_origins using the
+// configured static root_url as fallback.
+func NewFSRequestConfig(ctx context.Context, cfg *setting.Cfg, license licensing.Licensing, pluginsCDN *pluginscdn.Service, fullFrontendSettingsEnabled bool, httpReq *http.Request) (FSRequestConfig, error) {
 	frontendSettings := FSFrontendSettings{
 		AnalyticsConsoleReporting:            cfg.FrontendAnalyticsConsoleReporting,
 		AnonymousEnabled:                     cfg.Anonymous.Enabled,
@@ -76,13 +79,18 @@ func NewFSRequestConfig(ctx context.Context, cfg *setting.Cfg, license licensing
 	allowEmbeddingHosts := securitySection.Key("allow_embedding_hosts").Strings(" ")
 	formActionHosts := securitySection.Key("form_action_additional_hosts").Strings(" ")
 
+	appURL := cfg.AppURL
+	if httpReq != nil {
+		appURL = cfg.ResolveRootURL(httpReq.Host)
+	}
+
 	requestConfig := FSRequestConfig{
 		FSFrontendSettings:        frontendSettings,
 		CSPEnabled:                cfg.CSPEnabled,
 		CSPTemplate:               cfg.CSPTemplate,
 		CSPReportOnlyEnabled:      cfg.CSPReportOnlyEnabled,
 		CSPReportOnlyTemplate:     cfg.CSPReportOnlyTemplate,
-		AppURL:                    cfg.AppURL,
+		AppURL:                    appURL,
 		AllowEmbeddingHosts:       allowEmbeddingHosts,
 		FormActionAdditionalHosts: formActionHosts,
 	}

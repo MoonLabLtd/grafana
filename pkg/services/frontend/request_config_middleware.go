@@ -41,7 +41,7 @@ func RequestConfigMiddleware(cfg *setting.Cfg, license licensing.Licensing, sett
 
 			// Create base request config from global settings
 			// This is the default configuration that will be used for all requests
-			requestConfig, err := NewFSRequestConfig(ctx, cfg, license, pluginsCDN, fullFrontendSettingsEnabled)
+			requestConfig, err := NewFSRequestConfig(ctx, cfg, license, pluginsCDN, fullFrontendSettingsEnabled, r)
 
 			if err != nil {
 				logger.Error("failed to create request config", "err", err)
