@@ -8,6 +8,7 @@ import {
   type DataSourceInstanceSettings,
   type DataSourceJsonData,
   type DataSourceRef,
+  type DataSourceSettings,
   createDataFrame,
   type AdHocVariableFilter,
   type ScopedVars,
@@ -488,6 +489,86 @@ describe('DataSourceWithBackend', () => {
       },
       method: 'POST',
       url: '/api/datasources/uid/abc/resources/foo',
+    });
+  });
+
+  describe('getResourceWithSettings', () => {
+    const settings = {
+      id: 0,
+      uid: '',
+      orgId: 1,
+      name: 'test',
+      typeLogoUrl: '',
+      type: 'dummy',
+      typeName: '',
+      access: 'proxy',
+      url: '',
+      user: '',
+      database: '',
+      basicAuth: false,
+      basicAuthUser: '',
+      isDefault: false,
+      jsonData: {},
+      secureJsonData: {},
+      secureJsonFields: {},
+      readOnly: false,
+      withCredentials: false,
+    } as DataSourceSettings;
+
+    test('uses the persisted UID resource endpoint when a UID exists', () => {
+      config.featureToggles.unsavedDatasourceResourceLookup = true;
+      const { mock, ds } = createMockDatasource();
+      ds.getResourceWithSettings('foo', settings);
+
+      const args = mock.calls[0][0];
+      expect(mock.calls.length).toBe(1);
+      expect(args).toMatchObject({
+        method: 'GET',
+        url: '/api/datasources/uid/abc/resources/foo',
+      });
+    });
+
+    test('posts the settings to the ephemeral endpoint when the UID is empty', async () => {
+      config.featureToggles.unsavedDatasourceResourceLookup = true;
+      mockDatasourceRequest.mockReset();
+      mockDatasourceRequest.mockReturnValue(Promise.resolve({ data: { workgroups: ['primary'] } } as FetchResponse));
+      const ds = new MyDataSource({
+        name: 'test',
+        id: 0,
+        uid: '',
+        type: 'dummy',
+        jsonData: {},
+      } as DataSourceInstanceSettings<DataSourceJsonData>);
+
+      const res = await ds.getResourceWithSettings('workgroups', settings);
+
+      const args = mockDatasourceRequest.mock.calls[0][0];
+      expect(mockDatasourceRequest.mock.calls.length).toBe(1);
+      expect(args).toMatchObject({
+        method: 'POST',
+        url: '/api/datasources/uid/__ephemeral__/resources/workgroups',
+        headers: {
+          'X-Plugin-Id': 'dummy',
+          'Content-Type': 'application/json',
+        },
+      });
+      expect(args.data).toBe(settings);
+      expect(res).toEqual({ workgroups: ['primary'] });
+    });
+
+    test('throws when the UID is empty and the feature is disabled', async () => {
+      config.featureToggles.unsavedDatasourceResourceLookup = false;
+      const ds = new MyDataSource({
+        name: 'test',
+        id: 0,
+        uid: '',
+        type: 'dummy',
+        jsonData: {},
+      } as DataSourceInstanceSettings<DataSourceJsonData>);
+
+      await expect(ds.getResourceWithSettings('workgroups', settings)).rejects.toThrow(
+        'Cannot fetch resources without a data source UID or the unsaved resource lookup feature.'
+      );
     });
   });
 

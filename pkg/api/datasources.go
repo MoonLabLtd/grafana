@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strconv"
@@ -22,6 +23,8 @@ import (
 	"github.com/grafana/grafana/pkg/infra/metrics/metricutil"
 	contextmodel "github.com/grafana/grafana/pkg/services/contexthandler/model"
 	"github.com/grafana/grafana/pkg/services/datasources"
+	"github.com/grafana/grafana/pkg/services/featuremgmt"
+	"github.com/grafana/grafana/pkg/services/pluginsintegration/adapters"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/grafana/grafana/pkg/util"
 	"github.com/grafana/grafana/pkg/web"
@@ -741,6 +744,118 @@ func (hs *HTTPServer) CallDatasourceResourceWithUID(c *contextmodel.ReqContext) 
 	}
 
 	hs.callPluginResourceWithDataSource(c, plugin.ID, ds)
+}
+
+// ephemeralDataSourceResourceRequest is the in-memory, unsaved data source
+// configuration submitted by the frontend for resource lookups. No data source
+// is persisted as a side effect of this request.
+type ephemeralDataSourceResourceRequest struct {
+	Type            string            `json:"type"`
+	Access          string            `json:"access"`
+	Url             string            `json:"url"`
+	Database        string            `json:"database"`
+	User            string            `json:"user"`
+	BasicAuth       bool              `json:"basicAuth"`
+	BasicAuthUser   string            `json:"basicAuthUser"`
+	WithCredentials bool              `json:"withCredentials"`
+	IsDefault       bool              `json:"isDefault"`
+	Version         int               `json:"version"`
+	ReadOnly        bool              `json:"readOnly"`
+	APIVersion      string            `json:"apiVersion"`
+	JsonData        json.RawMessage   `json:"jsonData"`
+	SecureJsonData  map[string]string `json:"secureJsonData"`
+}
+
+// swagger:route POST /datasources/uid/__ephemeral__/resources/{datasource_proxy_route} datasources callDatasourceResourceWithEphemeralSettings
+//
+// Fetch data source resources using an unsaved, in-memory data source configuration.
+//
+// The request body is a full DataSourceSettings object. No data source is
+// persisted in the database or added to any cache.
+//
+// Responses:
+// 200: okResponse
+// 400: badRequestError
+// 403: forbiddenError
+// 500: internalServerError
+func (hs *HTTPServer) CallDatasourceResourceWithEphemeralSettings(c *contextmodel.ReqContext) {
+	if !hs.Features.IsEnabledGlobally(featuremgmt.FlagUnsavedDatasourceResourceLookup) {
+		c.JsonApiErr(http.StatusBadRequest, "Ephemeral resource lookups are disabled.", nil)
+		return
+	}
+
+	body, err := io.ReadAll(http.MaxBytesReader(c.Resp, c.Req.Body, maxResourceBodySize))
+	if err != nil {
+		c.JsonApiErr(http.StatusBadRequest, "Failed to read request body", err)
+		return
+	}
+
+	var req ephemeralDataSourceResourceRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		c.JsonApiErr(http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	if req.Type == "" {
+		c.JsonApiErr(http.StatusBadRequest, "Datasource type is required", nil)
+		return
+	}
+
+	plugin, exists := hs.pluginStore.Plugin(c.Req.Context(), req.Type)
+	if !exists {
+		c.JsonApiErr(http.StatusBadRequest, "Invalid datasource plugin type", nil)
+		return
+	}
+
+	ds := &datasources.DataSource{
+		OrgID:           c.OrgID,
+		Type:            req.Type,
+		Access:          datasources.DsAccess(req.Access),
+		URL:             req.Url,
+		Database:        req.Database,
+		User:            req.User,
+		BasicAuth:       req.BasicAuth,
+		BasicAuthUser:   req.BasicAuthUser,
+		WithCredentials: req.WithCredentials,
+		IsDefault:       req.IsDefault,
+		Version:         req.Version,
+		ReadOnly:        req.ReadOnly,
+		APIVersion:      req.APIVersion,
+	}
+	if len(req.JsonData) > 0 {
+		d, err := simplejson.NewJson(req.JsonData)
+		if err != nil {
+			c.JsonApiErr(http.StatusBadRequest, "Invalid jsonData", err)
+			return
+		}
+		ds.JsonData = d
+	}
+	if len(req.SecureJsonData) > 0 {
+		secure := make(map[string][]byte, len(req.SecureJsonData))
+		for k, v := range req.SecureJsonData {
+			secure[k] = []byte(v)
+		}
+		ds.SecureJsonData = secure
+	}
+
+	datasourcesLogger.Debug("ephemeral datasource resource request",
+		"plugin", req.Type, "path", web.Params(c.Req)["*"])
+
+	pCtx := hs.pluginContextProvider.GetBasePluginContext(c.Req.Context(), plugin, c.SignedInUser)
+	instanceSettings, err := adapters.ModelToInstanceSettings(ds, func(*datasources.DataSource) (map[string]string, error) {
+		out := make(map[string]string, len(ds.SecureJsonData))
+		for k, v := range ds.SecureJsonData {
+			out[k] = string(v)
+		}
+		return out, nil
+	})
+	if err != nil {
+		c.JsonApiErr(http.StatusInternalServerError, "Failed to build plugin settings", err)
+		return
+	}
+	pCtx.DataSourceInstanceSettings = instanceSettings
+
+	hs.dispatchPluginResourceWithDataSource(c, pCtx, ds)
 }
 
 func (hs *HTTPServer) convertModelToDtos(ctx context.Context, ds *datasources.DataSource) dtos.DataSource {

@@ -187,6 +187,14 @@ export interface DataSourcePluginMeta<T extends KeyValue = {}> extends PluginMet
   backend?: boolean;
   isBackend?: boolean;
   multiValueFilterOperators?: boolean;
+
+  /**
+   * Keys in the data source `jsonData` that must be populated (as non-empty
+   * strings) before the plugin's "Save & test" action is enabled. Used to guard
+   * against submitting empty required resource selections for unsaved data
+   * sources.
+   */
+  requiredFields?: string[];
 }
 
 interface PluginMetaQueryOptions {

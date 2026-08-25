@@ -1450,4 +1450,9 @@ export interface FeatureToggles {
   * @default false
   */
   cujTracking?: boolean;
+  /**
+  * Enable resource lookups for unsaved/quality data source configurations (restores v12 behavior)
+  * @default true
+  */
+  unsavedDatasourceResourceLookup?: boolean;
 }

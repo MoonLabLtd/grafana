@@ -973,4 +973,8 @@ const (
 	// FlagGrafanaFrontendLegacyAPIHandling
 	// Controls whether the frontend blocks calls to legacy /api/ endpoints
 	FlagGrafanaFrontendLegacyAPIHandling = "grafana.frontendLegacyAPIHandling"
+
+	// FlagUnsavedDatasourceResourceLookup
+	// Enable resource lookups for unsaved/quality data source configurations (restores v12 behavior)
+	FlagUnsavedDatasourceResourceLookup = "unsavedDatasourceResourceLookup"
 )

@@ -17,6 +17,7 @@ import {
   parseLiveChannelAddress,
   type ScopedVars,
   type AdHocVariableFilter,
+  type DataSourceSettings,
 } from '@grafana/data';
 
 import { reportInteraction } from '../analytics/utils';
@@ -361,6 +362,43 @@ class DataSourceWithBackend<
         headers: options?.headers ? { ...options.headers, ...headers } : headers,
         params: params ?? options?.params,
         url: this.buildResourcesDatasourceUrl(path),
+      })
+    );
+    return result.data;
+  }
+
+  /**
+   * Make a resource lookup request using an unsaved, in-memory data source
+   * configuration. When the data source has a persisted UID the existing
+   * {@link getResource} path is used unchanged; otherwise the settings are sent
+   * as the request body to the ephemeral resource endpoint so the backend can
+   * resolve the plugin handler without a persisted UID.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async getResourceWithSettings<T = any>(
+    path: string,
+    settings: DataSourceSettings,
+    options?: Partial<BackendSrvRequest>
+  ): Promise<T> {
+    if (this.uid) {
+      return this.getResource(path, undefined, options);
+    }
+
+    if (!config.featureToggles.unsavedDatasourceResourceLookup) {
+      throw new Error('Cannot fetch resources without a data source UID or the unsaved resource lookup feature.');
+    }
+
+    const headers: Record<string, string> = { ...options?.headers };
+    headers[PluginRequestHeaders.PluginID] = settings.type;
+    headers['Content-Type'] = 'application/json';
+
+    const result = await lastValueFrom(
+      getBackendSrv().fetch<T>({
+        ...options,
+        method: 'POST',
+        headers,
+        data: settings,
+        url: `/api/datasources/uid/__ephemeral__/resources/${path}`,
       })
     );
     return result.data;
