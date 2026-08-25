@@ -171,6 +171,24 @@ export function EditDataSourceView({
     },
   };
 
+  // Gate "Save & test" on the plugin's declared required config fields being
+  // populated, so empty required values (e.g. an unselected Athena workgroup)
+  // are never submitted to the backend. Plugins declare the keys via
+  // `DataSourcePluginMeta.requiredFields`.
+  const requiredFieldsValid = useMemo(() => {
+    const keys = dataSourceMeta.requiredFields ?? [];
+    if (keys.length === 0) {
+      return true;
+    }
+    return keys.every((key) => {
+      // jsonData is a closed interface keyed generically by the plugin's declared
+      // required fields, so a type assertion is required to index it.
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      const value = (dataSource.jsonData as Record<string, unknown> | undefined)?.[key];
+      return typeof value === 'string' ? value.trim().length > 0 : Boolean(value && value !== null);
+    });
+  }, [dataSourceMeta, dataSource]);
+
   const onSubmit = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement> | React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -294,6 +312,7 @@ export function EditDataSourceView({
         }}
         canDelete={!readOnly && hasDeleteRights}
         canSave={!readOnly && hasWriteRights}
+        requiredFieldsValid={requiredFieldsValid}
       >
         <DataSourceDefaultButton uid={dataSource.uid} />
       </ButtonRow>

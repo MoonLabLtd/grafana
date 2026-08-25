@@ -64,7 +64,14 @@ func (hs *HTTPServer) callPluginResourceWithDataSource(c *contextmodel.ReqContex
 		return
 	}
 
-	err = hs.DataSourceRequestValidator.Validate(ds.URL, ds.JsonDataMap(), c.Req)
+	hs.dispatchPluginResourceWithDataSource(c, pCtx, ds)
+}
+
+// dispatchPluginResourceWithDataSource validates the request against the datasource
+// settings and dispatches the resource call to the plugin. It is shared by the
+// persisted (UID-based) and ephemeral (unsaved configuration) resource lookups.
+func (hs *HTTPServer) dispatchPluginResourceWithDataSource(c *contextmodel.ReqContext, pCtx backend.PluginContext, ds *datasources.DataSource) {
+	err := hs.DataSourceRequestValidator.Validate(ds.URL, ds.JsonDataMap(), c.Req)
 	if err != nil {
 		c.JsonApiErr(http.StatusForbidden, "Access denied", err)
 		return

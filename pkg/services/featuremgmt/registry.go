@@ -3105,7 +3105,15 @@ var (
 			Expression:   "false",
 			Generate:     Generate{React: true},
 		},
-		// tl;dr: name your new flag `component.featureName`, specify Go and/or React generation targets, and use with OpenFeature!
+		{
+			Name:         "unsavedDatasourceResourceLookup",
+			Description:  "Enable resource lookups for unsaved/quality data source configurations (restores v12 behavior)",
+			Stage:        FeatureStageGeneralAvailability,
+			Owner:        grafanaDataSourcesPlugins,
+			Expression:   "true", // enabled by default
+			Generate:     Generate{LegacyGo: true, LegacyFrontend: true},
+		},
+		// tl;dr: name your new flag `component.<featureName>`, specify Go and/or React generation targets, and use with OpenFeature!
 		//
 		// Adding a new feature flag? Be sure to check out the updated docs at /contribute/feature-toggles.md#Steps-to-adding-a-feature-toggle
 		// to follow new naming conventions and usage!

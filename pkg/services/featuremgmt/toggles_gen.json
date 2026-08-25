@@ -5842,6 +5842,19 @@
     },
     {
       "metadata": {
+        "name": "unsavedDatasourceResourceLookup",
+        "resourceVersion": "1787640805652",
+        "creationTimestamp": "2026-08-25T06:53:25Z"
+      },
+      "spec": {
+        "description": "Enable resource lookups for unsaved/quality data source configurations (restores v12 behavior)",
+        "stage": "GA",
+        "codeowner": "@grafana/data-sources-plugins",
+        "expression": "true"
+      }
+    },
+    {
+      "metadata": {
         "name": "useKubernetesShortURLsAPI",
         "resourceVersion": "1779440584464",
         "creationTimestamp": "2025-08-29T14:46:39Z",
