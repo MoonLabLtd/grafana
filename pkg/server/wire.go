@@ -156,6 +156,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/queryhistory"
 	"github.com/grafana/grafana/pkg/services/quota/quotaimpl"
 	"github.com/grafana/grafana/pkg/services/rendering"
+	"github.com/grafana/grafana/pkg/services/rooturl"
 	"github.com/grafana/grafana/pkg/services/search"
 	"github.com/grafana/grafana/pkg/services/search/sort"
 	"github.com/grafana/grafana/pkg/services/secrets"
@@ -442,6 +443,7 @@ var wireBasicSet = wire.NewSet(
 	authnimpl.ProvideAuthnService,
 	authnimpl.ProvideAuthnServiceAuthenticateOnly,
 	authnimpl.ProvideRegistration,
+	rooturl.ProvideService,
 	supportbundlesimpl.ProvideService,
 	extsvcaccounts.ProvideExtSvcAccountsService,
 	wire.Bind(new(serviceaccounts.ExtSvcAccountsService), new(*extsvcaccounts.ExtSvcAccountsService)),

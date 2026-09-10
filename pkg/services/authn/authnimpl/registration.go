@@ -23,9 +23,11 @@ import (
 	"github.com/grafana/grafana/pkg/services/loginattempt"
 	"github.com/grafana/grafana/pkg/services/notifications"
 	"github.com/grafana/grafana/pkg/services/oauthtoken"
+	"github.com/grafana/grafana/pkg/services/rooturl"
 	"github.com/grafana/grafana/pkg/services/org"
 	"github.com/grafana/grafana/pkg/services/quota"
 	"github.com/grafana/grafana/pkg/services/rendering"
+	"github.com/grafana/grafana/pkg/services/rooturl"
 	tempuser "github.com/grafana/grafana/pkg/services/temp_user"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/setting"
@@ -43,7 +45,9 @@ func ProvideRegistration(
 	authInfoService login.AuthInfoService, renderService rendering.Service,
 	features featuremgmt.FeatureToggles, oauthTokenService oauthtoken.OAuthTokenService,
 	socialService social.Service, cache *remotecache.RemoteCache,
+	rootURLService rooturl.Service,
 	ldapService service.LDAP, settingsProviderService setting.Provider,
+	rootURLService rooturl.Service,
 	tracer tracing.Tracer, tempUserService tempuser.Service, notificationService notifications.Service,
 ) (Registration, error) {
 	logger := log.New("authn.registration")
@@ -105,7 +109,7 @@ func ProvideRegistration(
 
 	for name := range socialService.GetOAuthProviders() {
 		clientName := authn.ClientWithPrefix(name)
-		authnSvc.RegisterClient(clients.ProvideOAuth(clientName, cfg, oauthTokenService, socialService, settingsProviderService, features, tracer))
+		authnSvc.RegisterClient(clients.ProvideOAuth(clientName, cfg, oauthTokenService, socialService, settingsProviderService, rootURLService, features, tracer))
 	}
 
 	//nolint:staticcheck // not yet migrated to OpenFeature

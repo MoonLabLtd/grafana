@@ -22,7 +22,9 @@ import (
 	"github.com/grafana/grafana/pkg/login/social/connectors"
 	"github.com/grafana/grafana/pkg/services/auth"
 	"github.com/grafana/grafana/pkg/services/authn"
+	"github.com/grafana/grafana/pkg/services/rooturl"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
+	"github.com/grafana/grafana/pkg/services/rooturl"
 	"github.com/grafana/grafana/pkg/services/login"
 	"github.com/grafana/grafana/pkg/services/oauthtoken"
 	"github.com/grafana/grafana/pkg/setting"
@@ -73,6 +75,7 @@ var (
 
 func ProvideOAuth(
 	name string, cfg *setting.Cfg, oauthService oauthtoken.OAuthTokenService,
+	rootURLService rooturl.Service,
 	socialService social.Service, settingsProviderService setting.Provider,
 	features featuremgmt.FeatureToggles, tracer trace.Tracer,
 ) *OAuth {
@@ -80,7 +83,7 @@ func ProvideOAuth(
 	return &OAuth{
 		name, fmt.Sprintf("oauth_%s", providerName), providerName,
 		log.New(name), cfg, tracer, settingsProviderService, oauthService,
-		socialService, features,
+		socialService, features, rootURLService,
 	}
 }
 
@@ -96,6 +99,7 @@ type OAuth struct {
 	oauthService        oauthtoken.OAuthTokenService
 	socialService       social.Service
 	features            featuremgmt.FeatureToggles
+	rootURLService      rooturl.Service
 }
 
 func (c *OAuth) Name() string {
@@ -279,6 +283,18 @@ func (c *OAuth) RedirectURL(ctx context.Context, r *authn.Request) (*authn.Redir
 	state, hashedSate, err := genOAuthState(c.cfg.SecretKey, oauthCfg.ClientSecret)
 	if err != nil {
 		return nil, errOAuthGenState.Errorf("failed to generate state: %w", err)
+	}
+
+	// Determine the redirect URI based on dynamic root URL if configured
+	redirectURI := ""
+	if r != nil && r.HTTPRequest != nil {
+		redirectURI = c.rootURLService.GetRootURL(r.HTTPRequest) + social.SocialBaseUrl + c.providerName
+	}
+
+
+	// Add redirect_uri as a parameter if dynamically determined
+	if redirectURI != "" {
+		opts = append(opts, oauth2.SetAuthURLParam("redirect_uri", redirectURI))
 	}
 
 	connector, err := c.socialService.GetConnector(c.providerName)

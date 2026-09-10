@@ -15,16 +15,6 @@ import {
 
 export const EXTENSION_SIDEBAR_DOCKED_LOCAL_STORAGE_KEY = 'grafana.navigation.extensionSidebarDocked';
 const EXTENSION_SIDEBAR_WIDTH_LOCAL_STORAGE_KEY = 'grafana.navigation.extensionSidebarWidth';
-const PERMITTED_EXTENSION_SIDEBAR_PLUGINS = [
-  'grafana-assistant-app',
-  'grafana-assistant-onboarding-app',
-  'grafana-dash-app',
-  // The docs plugin ID is transitioning from grafana-grafanadocsplugin-app to grafana-pathfinder-app.
-  // Support both until that migration is complete.
-  'grafana-grafanadocsplugin-app',
-  'grafana-pathfinder-app',
-  'grafana-grotfood-app',
-];
 
 export type ExtensionSidebarContextType = {
   /**
@@ -112,14 +102,13 @@ export const ExtensionSidebarContextProvider = ({ children }: ExtensionSidebarCo
     [isPluginLinksLoading, isExtensionPointPluginMetaLoading]
   );
 
-  // get all components for this extension point, but only for the permitted plugins
+  // get all components for this extension point
   // if the extension sidebar is not enabled, we will return an empty map
   const availableComponents = useMemo(
     () =>
       new Map(
         Array.from(pluginMap?.entries() || []).filter(
           ([pluginId, pluginMeta]) =>
-            PERMITTED_EXTENSION_SIDEBAR_PLUGINS.includes(pluginId) &&
             links.some(
               (link) =>
                 link.pluginId === pluginId &&
@@ -173,7 +162,6 @@ export const ExtensionSidebarContextProvider = ({ children }: ExtensionSidebarCo
       if (
         event.payload.pluginId &&
         event.payload.componentTitle &&
-        PERMITTED_EXTENSION_SIDEBAR_PLUGINS.includes(event.payload.pluginId) &&
         availableComponents
           .get(event.payload.pluginId)
           ?.addedComponents.some((component) => component.title === event.payload.componentTitle)
