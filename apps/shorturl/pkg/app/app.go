@@ -21,6 +21,12 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 )
 
+// ShortURLAppConfig contains app-specific configuration for the shorturl app
+type ShortURLAppConfig struct {
+	// AppURL is the configured root URL of the Grafana instance (including any subpath)
+	AppURL string
+}
+
 func New(cfg app.Config) (app.App, error) {
 	cfg.KubeConfig.APIPath = "apis"
 	tmp, err := k8s.NewClientRegistry(cfg.KubeConfig, k8s.DefaultClientConfig()).
@@ -29,6 +35,16 @@ func New(cfg app.Config) (app.App, error) {
 		return nil, fmt.Errorf("unable to create client")
 	}
 	client := shorturlv1beta1.NewShortURLClient(tmp)
+
+	// Extract app-specific config
+	var appURL string
+	if specificConfig, ok := cfg.SpecificConfig.(ShortURLAppConfig); ok {
+		appURL = specificConfig.AppURL
+	}
+	// Ensure appURL ends with a slash for consistent path joining
+	if appURL != "" && !strings.HasSuffix(appURL, "/") {
+		appURL += "/"
+	}
 
 	simpleConfig := simple.AppConfig{
 		Name:       "shorturl",
@@ -59,10 +75,6 @@ func New(cfg app.Config) (app.App, error) {
 						Method: "GET",
 						Path:   "goto",
 					}: func(ctx context.Context, w app.CustomRouteResponseWriter, req *app.CustomRouteRequest) error {
-						appURL, _, found := strings.Cut(req.URL.Path, "/apis/") // This will be settings.AppURL
-						if !found {
-							return fmt.Errorf("unable to parse request URL")
-						}
 						id := resource.Identifier{
 							Namespace: req.ResourceIdentifier.Namespace,
 							Name:      req.ResourceIdentifier.Name,
@@ -94,7 +106,20 @@ func New(cfg app.Config) (app.App, error) {
 							}
 						}()
 
-						redirectURL := appURL + "/" + info.Spec.Path
+						// Construct redirect URL using the configured AppURL
+						// This ensures subpaths are correctly included in redirects
+						var redirectURL string
+						if appURL != "" {
+							redirectURL = appURL + info.Spec.Path
+						} else {
+							// Fallback: extract from request path for backwards compatibility
+							appURLFromPath, _, found := strings.Cut(req.URL.Path, "/apis/")
+							if !found {
+								return fmt.Errorf("unable to parse request URL")
+							}
+							redirectURL = appURLFromPath + "/" + info.Spec.Path
+						}
+
 						if req.URL.Query().Get("redirect") == "false" { // helpful for testing
 							return json.NewEncoder(w).Encode(shorturlv1beta1.GetGotoResponse{
 								Url: redirectURL,

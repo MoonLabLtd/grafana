@@ -28,6 +28,7 @@ export class RowRepeaterBehavior extends SceneObjectBase<RowRepeaterBehaviorStat
   private _prevRepeatValues?: VariableValueSingle[];
   private _clonedRows?: SceneGridRow[];
 
+  private _performRepeatTimeoutId?: ReturnType<typeof setTimeout>;
   public constructor(state: RowRepeaterBehaviorState) {
     super(state);
 
@@ -35,7 +36,12 @@ export class RowRepeaterBehavior extends SceneObjectBase<RowRepeaterBehaviorStat
   }
 
   private _activationHandler() {
-    this.performRepeat();
+    // Defer the initial performRepeat to the next macrotask so the parent SceneVariableSet
+    // can activate first under RENDER_BEFORE_ACTIVATION. A sync call here can early-return
+    // while the set is inactive; if the variable completes before activation, the completion
+    // notification does not reach the repeater, causing a permanent loading spinner.
+    this._clearPerformRepeatTimeout();
+    this._performRepeatTimeoutId = setTimeout(() => this.performRepeat(), 0);
 
     const layout = this._getLayout();
     const originalRow = this._getRow();
@@ -68,7 +74,15 @@ export class RowRepeaterBehavior extends SceneObjectBase<RowRepeaterBehaviorStat
 
     return () => {
       sub.unsubscribe();
+      this._clearPerformRepeatTimeout();
     };
+  }
+
+  private _clearPerformRepeatTimeout() {
+    if (this._performRepeatTimeoutId) {
+      clearTimeout(this._performRepeatTimeoutId);
+      this._performRepeatTimeoutId = undefined;
+    }
   }
 
   private _getRow(): SceneGridRow {
