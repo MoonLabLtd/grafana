@@ -973,4 +973,8 @@ const (
 	// FlagGrafanaFrontendLegacyAPIHandling
 	// Controls whether the frontend blocks calls to legacy /api/ endpoints
 	FlagGrafanaFrontendLegacyAPIHandling = "grafana.frontendLegacyAPIHandling"
+
+	// FlagAutoDetectRootUrl
+	// Enable dynamic root URL detection based on request headers and trusted origins
+	FlagAutoDetectRootUrl = "autoDetectRootUrl"
 )
